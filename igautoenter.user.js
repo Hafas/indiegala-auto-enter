@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.0.1
+// @version      1.0.2
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -29,20 +29,34 @@ var my = {
 function start () {
   getUserData().done(function (payload) {
     setData(payload);
-    if (my.coins === 0) {
-      log("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
-      return setTimeout(navigateToStart, my.nextRecharge);
+    if (!okToContinue()) {
+      return;
     }
-    enterGiveaways().then(navigateToNext);
+    enterGiveaways().then(function () {
+      if (okToContinue()) {
+        navigateToNext();
+      }
+    });
   });
 }
 
+function okToContinue () {
+  if (my.coins === 0) {
+    log("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
+    setTimeout(navigateToStart, my.nextRecharge);
+    return false;
+  }
+  return true;
+}
+
 function getUserData () {
-  return $.get("/giveaways/get_user_level_and_coins");
+  return $.ajax({
+    url: "/giveaways/get_user_level_and_coins",
+    dataType: "json"
+  });
 }
 
 function setData (data) {
-  data = JSON.parse(data);
   log("setData", "data", data);
   my.level = parseInt(data.current_level);
   my.coins = parseInt(data.coins_tot);
@@ -60,7 +74,7 @@ function enterGiveaways () {
       if (payload.status === "ok") {
         my.coins = payload.new_amount;
       } else {
-        log("Failed to enter giveaway. Status: %s. My: %s", payload.status, my);
+        log("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
       }
     });
   });
@@ -177,7 +191,8 @@ Giveaway.prototype.enter = function () {
         giv_id: this.id,
         ticket_price: this.price
       }),
-      contentType: "application/json; charset=UTF-8"
+      contentType: "application/json; charset=UTF-8",
+      dataType: "json"
   });
 };
 
@@ -210,6 +225,10 @@ function getCurrentPage () {
     return 1;
   }
   return parseInt(match[1]);
+}
+
+function waitForRecharge () {
+
 }
 
 start();

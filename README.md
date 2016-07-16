@@ -20,6 +20,8 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.0.2* Don't navigate to next page when there are no more coins. Just wait on the current page.
+
 *1.0.1* Additional log outputs
 
 *1.0.0* Initial Release
