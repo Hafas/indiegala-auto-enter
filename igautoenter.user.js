@@ -227,8 +227,4 @@ function getCurrentPage () {
   return parseInt(match[1]);
 }
 
-function waitForRecharge () {
-
-}
-
 start();
