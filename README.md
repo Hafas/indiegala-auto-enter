@@ -1,6 +1,9 @@
 # indiegala-auto-enter
 A script to automatically enter Giveaways on IndieGala
 
+## Installation
+Install Tampermonkey and then click [here](https://github.com/Hafas/indiegala-auto-enter/raw/master/igautoenter.user.js).
+
 ## Options
 Edit the script to change the `options`-Object
 
@@ -10,6 +13,8 @@ Edit the script to change the `options`-Object
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not you only want to auto-enter guaranteed giveaways
 * `userBlacklist` {`Array<String>`} - add names of users to this array if you don't want to auto-enter their giveaways
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
+
+If there is an update backup the options first, because it will be overwritten otherwise.
 
 ## Disclaimer
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
