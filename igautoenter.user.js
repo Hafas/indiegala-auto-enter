@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.0.0
+// @version      1.0.1
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -30,7 +30,7 @@ function start () {
   getUserData().done(function (payload) {
     setData(payload);
     if (my.coins === 0) {
-      log("No coins available. Waiting for recharge ...");
+      log("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
       return setTimeout(navigateToStart, my.nextRecharge);
     }
     enterGiveaways().then(navigateToNext);
@@ -59,6 +59,8 @@ function enterGiveaways () {
       log("giveaway entered", "payload", payload);
       if (payload.status === "ok") {
         my.coins = payload.new_amount;
+      } else {
+        log("Failed to enter giveaway. Status: %s. My: %s", payload.status, my);
       }
     });
   });
@@ -132,27 +134,35 @@ function Giveaway (props) {
 
 Giveaway.prototype.shouldEnter = function () {
   if (this.entered) {
+    log("Not entering '%s' because I already entered", this.name);
     return false;
   }
   if (this.minLevel > my.level) {
+    log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
     return false;
   }
   if (isInGameBlacklist(this.name)) {
+    log("Not entering '%s' because this game is on my blacklist", this.name);
     return false;
   }
   if (this.price > my.coins) {
+    log("Not entering '%s' because my funds are insufficient (mine: %s, needed: %s)", this.name, my.coins, this.price);
     return false;
   }
   if (this.owned && !options.joinOwnedGames) {
+    log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, options.joinOwnedGames);
     return false;
   }
   if (options.maxParticipants && this.participants > options.maxParticipants) {
+    log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
     return false;
   }
   if (!this.guaranteed && options.onlyEnterGuaranteed) {
+    log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, options.onlyEnteredGuaranteed);
     return false;
   }
   if (isInUserBlacklist(this.by)) {
+    log("Not entering '%s' because the user '%s' is on my blacklist", this.name, this.by);
     return false;
   }
   return true;
