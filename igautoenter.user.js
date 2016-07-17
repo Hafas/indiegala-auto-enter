@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.0.3
+// @version      1.0.4
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -151,32 +151,32 @@ Giveaway.prototype.shouldEnter = function () {
     log("Not entering '%s' because I already entered", this.name);
     return false;
   }
-  if (this.minLevel > my.level) {
-    log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
+  if (this.owned && !options.joinOwnedGames) {
+    log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, options.joinOwnedGames);
     return false;
   }
   if (isInGameBlacklist(this.name)) {
     log("Not entering '%s' because this game is on my blacklist", this.name);
     return false;
   }
-  if (this.price > my.coins) {
-    log("Not entering '%s' because my funds are insufficient (mine: %s, needed: %s)", this.name, my.coins, this.price);
-    return false;
-  }
-  if (this.owned && !options.joinOwnedGames) {
-    log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, options.joinOwnedGames);
-    return false;
-  }
-  if (options.maxParticipants && this.participants > options.maxParticipants) {
-    log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
+  if (isInUserBlacklist(this.by)) {
+    log("Not entering '%s' because the user '%s' is on my blacklist", this.name, this.by);
     return false;
   }
   if (!this.guaranteed && options.onlyEnterGuaranteed) {
     log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, options.onlyEnteredGuaranteed);
     return false;
   }
-  if (isInUserBlacklist(this.by)) {
-    log("Not entering '%s' because the user '%s' is on my blacklist", this.name, this.by);
+  if (options.maxParticipants && this.participants > options.maxParticipants) {
+    log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
+    return false;
+  }
+  if (this.minLevel > my.level) {
+    log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
+    return false;
+  }
+  if (this.price > my.coins) {
+    log("Not entering '%s' because my funds are insufficient (mine: %s, needed: %s)", this.name, my.coins, this.price);
     return false;
   }
   return true;
