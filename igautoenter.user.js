@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.0.4
+// @version      1.1.1
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -16,6 +16,8 @@ var options = {
   onlyEnterGuaranteed: false,
   //Array of names of users
   userBlacklist: [],
+  //Some giveaways don't link to the game directly but to a sub containg that game. IndieGala is displaying these games as "not owned" even if you own that game
+  skipSubGiveaways: false,
   //Display logs
   debug: false
 };
@@ -86,7 +88,6 @@ function eachSeries (collection, action) {
   }
   var currentIndex = 0;
   function callNext () {
-    log("callNext", "currentIndex", currentIndex);
     if (currentIndex >= collection.length) {
       return $.when();
     }
@@ -112,7 +113,8 @@ function getGiveaways () {
       participants: parseInt(PARTICIPANTS_PATTERN.exec($(".ticket-info-cont .fa.fa-users", giveawayDOM).parent().text())[1]),
       guaranteed: infoText.indexOf("not guaranteed") === -1,
       by: $(".ticket-info-cont .steamnick a", giveawayDOM).text(),
-      entered: $(".ticket-right aside", giveawayDOM).length === 0
+      entered: $(".ticket-right aside", giveawayDOM).length === 0,
+      isSub: $(".giveaway-game-id", giveawayDOM).attr("value").indexOf("sub_") === 0
     }));
   }
   return giveaways;
@@ -131,7 +133,12 @@ function isInBlacklist(blacklist, name) {
     return false;
   }
   for (var i = 0; i < blacklist.length; ++i) {
-    if (name === blacklist[i]) {
+    var blacklistItem = blacklist[i];
+    if (blacklistItem instanceof RegExp) {
+      if (blacklistItem.test(name)) {
+        return true;
+      }
+    } if (name === blacklistItem) {
       return true;
     }
   }
@@ -152,7 +159,7 @@ Giveaway.prototype.shouldEnter = function () {
     return false;
   }
   if (this.owned && !options.joinOwnedGames) {
-    log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, options.joinOwnedGames);
+    log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, !!options.joinOwnedGames);
     return false;
   }
   if (isInGameBlacklist(this.name)) {
@@ -164,12 +171,15 @@ Giveaway.prototype.shouldEnter = function () {
     return false;
   }
   if (!this.guaranteed && options.onlyEnterGuaranteed) {
-    log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, options.onlyEnteredGuaranteed);
+    log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, !!options.onlyEnteredGuaranteed);
     return false;
   }
   if (options.maxParticipants && this.participants > options.maxParticipants) {
     log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
     return false;
+  }
+  if (this.isSub && options.skipSubGiveaways) {
+    log("Not entering '%s' because this giveaway is linked to a sub (skipSubGiveaways? %s)", this.name, !!options.skipSubGiveaways);
   }
   if (this.minLevel > my.level) {
     log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
