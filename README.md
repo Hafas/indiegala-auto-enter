@@ -21,6 +21,8 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.1.2* We are asking IndieGala directly if a game is owned to prevent a race condition between this script and IndieGala's subsequent render of the blue Steam-corner
+
 *1.1.1* replaced `skipImagelessGiveaway` with `skipSubGiveaways`
 
 *1.1.0* `skipImagelessGiveaway` added. Blacklists can now contain regular expressions.

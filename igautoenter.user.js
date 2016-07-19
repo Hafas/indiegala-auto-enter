@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.1
+// @version      1.1.2
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -34,13 +34,21 @@ function start () {
     if (!okToContinue()) {
       return;
     }
-    enterGiveaways().then(function () {
+    var giveaways = getGiveaways();
+    return setOwned(giveaways).then(enterGiveaways).then(function () {
       if (okToContinue()) {
         navigateToNext();
       }
     });
+  }).fail(function (err) {
+    error("Something went wrong:", err);
   });
 }
+
+var IdType = {
+  APP: "APP",
+  SUB: "SUB"
+};
 
 function okToContinue () {
   if (my.coins === 0) {
@@ -58,6 +66,36 @@ function getUserData () {
   });
 }
 
+function setOwned (giveaways) {
+  var gameIds = giveaways.map(function (giveaway) {
+    return giveaway.gameId;
+  });
+  return $.ajax({
+    url: "/giveaways/match_games_in_steam_library",
+    type: "POST",
+    data: JSON.stringify({
+      "games_id": gameIds
+    }),
+    dataType: "json"
+  }).then(function (ownedIds) {
+    for (var i = 0; i < giveaways.length; ++i) {
+      var giveaway = giveaways[i];
+      for (var j = 0; j < ownedIds.length; ++j) {
+        if (giveaway.gameId == ownedIds[j]) {
+          log("I seem to own '%s' (gameId: '%s')", giveaway.name);
+          giveaway.owned = true;
+          break;
+        }
+      }
+      if (!giveaway.owned) {
+        log("I don't seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
+        giveaway.owned = false;
+      }
+    }
+    return giveaways;
+  });
+}
+
 function setData (data) {
   log("setData", "data", data);
   my.level = parseInt(data.current_level);
@@ -65,8 +103,8 @@ function setData (data) {
   my.nextRecharge = (parseInt(data.minutes_to_next_recharge) + 1) * 60 * 1000;
 }
 
-function enterGiveaways () {
-  var giveaways = getGiveaways();
+function enterGiveaways (giveaways) {
+  log("Entering giveaways", giveaways);
   return eachSeries(giveaways, function (giveaway) {
     if (!giveaway.shouldEnter()) {
       return $.when();
@@ -76,7 +114,7 @@ function enterGiveaways () {
       if (payload.status === "ok") {
         my.coins = payload.new_amount;
       } else {
-        log("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
+        error("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
       }
     });
   });
@@ -98,23 +136,44 @@ function eachSeries (collection, action) {
 
 var LEVEL_PATTERN = /LEVEL ([0-9]+)/;
 var PARTICIPANTS_PATTERN = /([0-9]+) participants/;
+var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo))?$/;
+var SUB_ID_PATTERN = /^sub_([0-9]+)$/;
+var FALLBACK_ID_PATTERN = /([0-9]+)/;
 function getGiveaways () {
   var giveawayDOMs = $(".col-xs-6.tickets-col .ticket-cont");
   var giveaways = [];
   for (var i = 0; i < giveawayDOMs.length; ++i) {
     var giveawayDOM = giveawayDOMs[i];
     var infoText = $(".price-type-cont .right", giveawayDOM).text();
+    var gameId = $(".giveaway-game-id", giveawayDOM).attr("value");
+    var match;
+    var steamId = null;
+    var idType = null;
+    if (match = APP_ID_PATTERN.exec(gameId)) {
+      steamId = match[1];
+      idType = IdType.APP;
+    } else if (match = SUB_ID_PATTERN.exec(gameId)) {
+      steamId = match[1];
+      idType = IdType.SUB;
+    } else {
+      error("Unrecognized id type in '%s'", gameId);
+      if (match = FALLBACK_ID_PATTERN.exec(gameId)) {
+        steamId = match[1];
+      }
+    }
     giveaways.push(new Giveaway({
       id: $(".ticket-right .relative", giveawayDOM).attr("rel"),
       name: $(".game-img-cont a", giveawayDOM).attr("title"),
       price: parseInt($(".ticket-price strong", giveawayDOM).text()),
       minLevel: parseInt(LEVEL_PATTERN.exec(infoText)[1]),
-      owned: $(".on-steam-library-corner", giveawayDOM).css("display") === "block",
+      owned: undefined, //will be filled in later in setOwned()
       participants: parseInt(PARTICIPANTS_PATTERN.exec($(".ticket-info-cont .fa.fa-users", giveawayDOM).parent().text())[1]),
       guaranteed: infoText.indexOf("not guaranteed") === -1,
       by: $(".ticket-info-cont .steamnick a", giveawayDOM).text(),
       entered: $(".ticket-right aside", giveawayDOM).length === 0,
-      isSub: $(".giveaway-game-id", giveawayDOM).attr("value").indexOf("sub_") === 0
+      steamId: steamId,
+      idType: idType,
+      gameId: gameId
     }));
   }
   return giveaways;
@@ -178,8 +237,9 @@ Giveaway.prototype.shouldEnter = function () {
     log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
     return false;
   }
-  if (this.isSub && options.skipSubGiveaways) {
+  if (this.idType === IdType.SUB && options.skipSubGiveaways) {
     log("Not entering '%s' because this giveaway is linked to a sub (skipSubGiveaways? %s)", this.name, !!options.skipSubGiveaways);
+    return false;
   }
   if (this.minLevel > my.level) {
     log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
@@ -225,6 +285,13 @@ function log () {
     return;
   }
   console.log.apply(console, arguments);
+}
+
+function error () {
+  if (!options.debug) {
+    return;
+  }
+  console.error.apply(console, arguments);
 }
 
 var PAGE_NUMBER_PATTERN = /giveaways\/([0-9]+)\//;
