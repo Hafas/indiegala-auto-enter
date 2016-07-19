@@ -82,7 +82,7 @@ function setOwned (giveaways) {
       var giveaway = giveaways[i];
       for (var j = 0; j < ownedIds.length; ++j) {
         if (giveaway.gameId == ownedIds[j]) {
-          log("I seem to own '%s' (gameId: '%s')", giveaway.name);
+          log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
           giveaway.owned = true;
           break;
         }
