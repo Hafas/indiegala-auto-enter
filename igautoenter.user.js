@@ -52,7 +52,7 @@ var IdType = {
 
 function okToContinue () {
   if (my.coins === 0) {
-    log("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
+    info("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
     setTimeout(navigateToStart, my.nextRecharge);
     return false;
   }
@@ -256,7 +256,7 @@ Giveaway.prototype.shouldEnter = function () {
 };
 
 Giveaway.prototype.enter = function () {
-  log("Entering giveaway", this.id, this.name);
+  info("Entering giveaway", this);
   return $.ajax({
       url: "/giveaways/new_entry",
       type: "POST",
@@ -295,6 +295,13 @@ function error () {
     return;
   }
   console.error.apply(console, arguments);
+}
+
+function info () {
+  if (!options.debug) {
+    return;
+  }
+  console.info.apply(console, arguments);
 }
 
 var PAGE_NUMBER_PATTERN = /giveaways\/([0-9]+)\//;
