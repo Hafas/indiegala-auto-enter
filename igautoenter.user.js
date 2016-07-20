@@ -68,6 +68,9 @@ function getUserData () {
 
 function setOwned (giveaways) {
   var gameIds = giveaways.map(function (giveaway) {
+    if (giveaway.idType === IdType.APP) {
+      return giveaway.steamId;
+    }
     return giveaway.gameId;
   });
   return $.ajax({
@@ -81,7 +84,7 @@ function setOwned (giveaways) {
     for (var i = 0; i < giveaways.length; ++i) {
       var giveaway = giveaways[i];
       for (var j = 0; j < ownedIds.length; ++j) {
-        if (giveaway.gameId == ownedIds[j]) {
+        if (giveaway.idType === IdType.APP && giveaway.steamId == ownedIds[j] || giveaway.gameId == ownedIds[j]) {
           log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
           giveaway.owned = true;
           break;
@@ -136,7 +139,7 @@ function eachSeries (collection, action) {
 
 var LEVEL_PATTERN = /LEVEL ([0-9]+)/;
 var PARTICIPANTS_PATTERN = /([0-9]+) participants/;
-var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo))?$/;
+var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
 var SUB_ID_PATTERN = /^sub_([0-9]+)$/;
 var FALLBACK_ID_PATTERN = /([0-9]+)/;
 function getGiveaways () {
