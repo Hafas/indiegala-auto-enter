@@ -7,6 +7,9 @@
 // @grant        none
 // ==/UserScript==
 
+/**
+ * change values to customize the script's behaviour
+ */
 var options = {
   joinOwnedGames: false,
   //set to 0 to ignore the number of participants
@@ -16,22 +19,34 @@ var options = {
   onlyEnterGuaranteed: false,
   //Array of names of users
   userBlacklist: [],
-  //Some giveaways don't link to the game directly but to a sub containg that game. IndieGala is displaying these games as "not owned" even if you own that game
+  //Some giveaways don't link to the game directly but to a sub containing that game. IndieGala is displaying these games as "not owned" even if you own that game
   skipSubGiveaways: false,
   //Display logs
   debug: false
 };
 
+/**
+ * current user state
+ */
 var my = {
   level: undefined,
   coins: undefined,
   nextRecharge: undefined
 };
 
+/**
+ * entry point of the script
+ */
 function start () {
+  if (!getCurrentPage()) {
+    //I'm not on a giveaway list page. Script stops here.
+    log("Current page is not a giveway list page. Stopping script.");
+    return;
+  }
   getUserData().done(function (payload) {
     setData(payload);
     if (!okToContinue()) {
+      //will navigate to first page on next recharge
       return;
     }
     var giveaways = getGiveaways();
@@ -41,6 +56,7 @@ function start () {
       }
     });
   }).fail(function (err) {
+    //Script stops here. Common cause is that the user is not logged in
     error("Something went wrong:", err);
   });
 }
@@ -50,6 +66,10 @@ var IdType = {
   SUB: "SUB"
 };
 
+/**
+ * returns true if the logged in user has coins available.
+ * if not, it will return false and trigger navigation to the first giveaway page on recharge
+ */
 function okToContinue () {
   if (my.coins === 0) {
     info("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
@@ -59,6 +79,9 @@ function okToContinue () {
   return true;
 }
 
+/**
+ * collects user information including level, coins and next recharge
+ */
 function getUserData () {
   return $.ajax({
     url: "/giveaways/get_user_level_and_coins",
@@ -66,6 +89,9 @@ function getUserData () {
   });
 }
 
+/**
+ * sets the owned-property of each giveaway, by sending a request to IndieGala
+ */
 function setOwned (giveaways) {
   var gameIds = giveaways.map(function (giveaway) {
     if (giveaway.idType === IdType.APP) {
@@ -99,6 +125,9 @@ function setOwned (giveaways) {
   });
 }
 
+/**
+ * puts the result of getUserData into the my-Object
+ */
 function setData (data) {
   log("setData", "data", data);
   my.level = parseInt(data.current_level);
@@ -106,6 +135,9 @@ function setData (data) {
   my.nextRecharge = (parseInt(data.minutes_to_next_recharge) + 1) * 60 * 1000;
 }
 
+/**
+ * itereates through each giveaway and enters them, if possible and desired
+ */
 function enterGiveaways (giveaways) {
   log("Entering giveaways", giveaways);
   return eachSeries(giveaways, function (giveaway) {
@@ -123,6 +155,9 @@ function enterGiveaways (giveaways) {
   });
 }
 
+/**
+ * utility function to call promises successively
+ */
 function eachSeries (collection, action) {
   if (!Array.isArray(collection)) {
     return $.when();
@@ -142,6 +177,20 @@ var PARTICIPANTS_PATTERN = /([0-9]+) participants/;
 var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
 var SUB_ID_PATTERN = /^sub_([0-9]+)$/;
 var FALLBACK_ID_PATTERN = /([0-9]+)/;
+/**
+ * parses the DOM and extracts the giveaway. Returns Giveaway-Objects, which include the following properties:
+ id {String} - the giveaway id
+ name {String} - name of the game
+ price {Integer} - the coins needed to enter the giveaway
+ minLevel {Integer} - the minimum level to enter the giveaway
+ participants {Integer} - the current number of participants, that entered that giveaway
+ guaranteed {Boolean} - whether or not the giveaway is a guaranteed one
+ by {String} - name of the user who created the giveaway
+ entered {Boolean} - wheter or not the logged in user has already entered the giveaway
+ steamId {String} - the id Steam gave this game
+ idType {"APP" | "SUB" | null} - "APP" if the steamId is an appId. "SUB" if the steamId is a subId. null if this script is not sure
+ gameId {String} - the gameId IndieGala gave this game. It's usually the appId with or without a suffix, or the subId with a "sub_"-prefix
+ */
 function getGiveaways () {
   var giveawayDOMs = $(".col-xs-6.tickets-col .ticket-cont");
   var giveaways = [];
@@ -182,14 +231,23 @@ function getGiveaways () {
   return giveaways;
 }
 
+/**
+ * whether or not a game by name is in the blacklist
+ */
 function isInGameBlacklist (name) {
   return isInBlacklist(options.gameBlacklist, name);
 }
 
+/**
+ * whether or not a user by name is in the blacklist
+ */
 function isInUserBlacklist (name) {
   return isInBlacklist(options.userBlacklist, name);
 }
 
+/**
+ * utility function that checks if a name is in a blacklist
+ */
 function isInBlacklist(blacklist, name) {
   if (!Array.isArray(blacklist)) {
     return false;
@@ -207,6 +265,9 @@ function isInBlacklist(blacklist, name) {
   return false;
 }
 
+/**
+ * Giveaway constructor
+ */
 function Giveaway (props) {
   for (var key in props) {
     if (props.hasOwnProperty(key)) {
@@ -215,6 +276,9 @@ function Giveaway (props) {
   }
 }
 
+/**
+ * returns true if the script can and should enter a giveaway
+ */
 Giveaway.prototype.shouldEnter = function () {
   if (this.entered) {
     log("Not entering '%s' because I already entered", this.name);
@@ -255,6 +319,9 @@ Giveaway.prototype.shouldEnter = function () {
   return true;
 };
 
+/**
+ * sends a POST-request to enter a giveaway
+ */
 Giveaway.prototype.enter = function () {
   info("Entering giveaway", this);
   return $.ajax({
@@ -269,20 +336,32 @@ Giveaway.prototype.enter = function () {
   });
 };
 
+/**
+ * navigate to the first giveaway page
+ */
 function navigateToStart () {
   navigateToPage(1);
 }
 
+/**
+ * navigates to the next giveaway page
+ */
 function navigateToNext () {
   navigateToPage(getCurrentPage() + 1);
 }
 
+/**
+ * navigates to {pageNumber}th giveaway page
+ */
 function navigateToPage (pageNumber) {
   var target = "/giveaways/" + pageNumber + "/expiry/asc/level/all";
   log("navigating to", target);
   window.location = target;
 }
 
+/**
+ * calls console.log if debug is enabled
+ */
 function log () {
   if (!options.debug) {
     return;
@@ -290,6 +369,9 @@ function log () {
   console.log.apply(console, arguments);
 }
 
+/**
+ * calls console.error if debug is enabled
+ */
 function error () {
   if (!options.debug) {
     return;
@@ -297,6 +379,9 @@ function error () {
   console.error.apply(console, arguments);
 }
 
+/**
+ * calls console.info if debug is enabled
+ */
 function info () {
   if (!options.debug) {
     return;
@@ -304,11 +389,17 @@ function info () {
   console.info.apply(console, arguments);
 }
 
-var PAGE_NUMBER_PATTERN = /giveaways\/([0-9]+)\//;
+var PAGE_NUMBER_PATTERN = /^\/giveaways(?:\/([0-9]+)\/|\/?$)/;
+/**
+ * returns the current giveaway page
+ */
 function getCurrentPage () {
   var currentPath = window.location.pathname;
   var match = PAGE_NUMBER_PATTERN.exec(currentPath);
   if (match === null) {
+    return null;
+  }
+  if (!match[1]) {
     return 1;
   }
   return parseInt(match[1]);
