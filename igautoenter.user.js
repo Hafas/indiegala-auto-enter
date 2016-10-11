@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.3
+// @version      1.1.4
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -134,7 +134,7 @@
   }
 
   /**
-   * itereates through each giveaway and enters them, if possible and desired
+   * iterates through each giveaway and enters them, if possible and desired
    */
   function enterGiveaways (giveaways) {
     log("Entering giveaways", giveaways);
