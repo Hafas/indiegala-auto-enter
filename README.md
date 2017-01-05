@@ -7,7 +7,6 @@ Install Tampermonkey and then click [here](https://github.com/Hafas/indiegala-au
 ## Options
 Edit the script to change the `options`-Object
 
-* `joinOwnedGames` {`Boolean`} - whether or not to auto-enter giveaways of owned games
 * `maxParticipants` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that already have at least `maxParticipants` participants
 * `gameBlacklist` {`Array<String/RegExp>`} - add names of games to this array if you don't want to auto-enter specific games (e.g. DLCs IndieGala doesn't recognized as owned or DLCs of games you don't own)
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not to only auto-enter guaranteed giveaways
