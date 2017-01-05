@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.4
+// @version      1.1.5
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -51,23 +51,21 @@
       log("Current page is not a giveway list page. Stopping script.");
       return;
     }
-    getLevel().done(function (payload) {
-      setLevel(payload);
-      getUserData().done(function (payload) {
-        setData(payload);
-        if (!okToContinue()) {
-          //will navigate to first page on next recharge
-          return;
+    var task1 = getLevel();
+    var task2 = getUserData();
+    $.when(task1, task2).done(function (payload1, payload2) {
+      setLevel(payload1[0]);
+      setData(payload2[0]);
+      log("myData:", my);
+      if (!okToContinue()) {
+        //will navigate to first page on next recharge
+        return;
+      }
+      var giveaways = getGiveaways();
+      return setOwned(giveaways).then(enterGiveaways).then(function () {
+        if (okToContinue()) {
+          navigateToNext();
         }
-        var giveaways = getGiveaways();
-        return setOwned(giveaways).then(enterGiveaways).then(function () {
-          if (okToContinue()) {
-            navigateToNext();
-          }
-        });
-      }).fail(function (err) {
-        //Script stops here. Common cause is that the user is not logged in
-        error("Something went wrong:", err);
       });
     }).fail(function (err) {
       //Script stops here. Common cause is that the user is not logged in
@@ -137,15 +135,12 @@
    */
   function setLevel (data) {
     log("setLevel", "data", data);
-    my.level = parseInt(data.current_level);
-    my.level = isNaN(my.level) ? 0 : my.level;
+    my.level = parseInt(data.current_level) || 0;
   }
   function setData (data) {
-    log("setData", "data", data);
-    my.coins = parseInt($(data).find('#silver-coins-menu').html());
-    my.nextRecharge = (parseInt($(data).find('#next-recharge-mins').html()) + 1) * 60 * 1000;
-    my.coins = isNaN(my.coins) ? 0 : my.coins;
-    my.nextRecharge = isNaN(my.nextRecharge) ? 20 * 60 * 1000 : my.nextRecharge;
+    var parsed = $(data);
+    my.coins = parseInt($("#silver-coins-menu", parsed).text()) || 0;
+    my.nextRecharge = (parseInt($("#next-recharge-mins", parsed).text()) + 1) * 60 * 1000 || 20 * 60 * 1000;
   }
 
   /**

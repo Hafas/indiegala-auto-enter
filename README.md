@@ -23,6 +23,8 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.1.5* Coins and recharge time are now fetched from the profile page instead, since IndieGala changed the API of `/get_user_level_and_coins` (fixed by [Yuping Zuo](https://github.com/zypA13510))
+
 *1.1.4* Added features to prevent some reasons the script may get stuck:
 * IndieGala's issues are being displayed in `alerts` which stops the script until okayed. If `interceptAlert` is set to true, the script will intercept and ignore these messages.
 * The script used to travel past the last giveaway page and go further and further and further and further and ... When reaching the last page, it will now return to the first page instead. See `waitOnEnd`.
