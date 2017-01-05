@@ -51,17 +51,23 @@
       log("Current page is not a giveway list page. Stopping script.");
       return;
     }
-    getUserData().done(function (payload) {
-      setData(payload);
-      if (!okToContinue()) {
-        //will navigate to first page on next recharge
-        return;
-      }
-      var giveaways = getGiveaways();
-      return setOwned(giveaways).then(enterGiveaways).then(function () {
-        if (okToContinue()) {
-          navigateToNext();
+    getLevel().done(function (payload) {
+      setLevel(payload);
+      getUserData().done(function (payload) {
+        setData(payload);
+        if (!okToContinue()) {
+          //will navigate to first page on next recharge
+          return;
         }
+        var giveaways = getGiveaways();
+        return setOwned(giveaways).then(enterGiveaways).then(function () {
+          if (okToContinue()) {
+            navigateToNext();
+          }
+        });
+      }).fail(function (err) {
+        //Script stops here. Common cause is that the user is not logged in
+        error("Something went wrong:", err);
       });
     }).fail(function (err) {
       //Script stops here. Common cause is that the user is not logged in
@@ -90,8 +96,11 @@
   /**
    * collects user information including level, coins and next recharge
    */
-  function getUserData () {
+  function getLevel () {
     return request("/giveaways/get_user_level_and_coins");
+  }
+  function getUserData() {
+    return request("/profile", "GET", undefined, "html");
   }
 
   /**
@@ -126,11 +135,17 @@
   /**
    * puts the result of getUserData into the my-Object
    */
+  function setLevel (data) {
+    log("setLevel", "data", data);
+    my.level = parseInt(data.current_level);
+    my.level = isNaN(my.level) ? 0 : my.level;
+  }
   function setData (data) {
     log("setData", "data", data);
-    my.level = parseInt(data.current_level);
-    my.coins = parseInt(data.coins_tot);
-    my.nextRecharge = (parseInt(data.minutes_to_next_recharge) + 1) * 60 * 1000;
+    my.coins = parseInt($(data).find('#silver-coins-menu').html());
+    my.nextRecharge = (parseInt($(data).find('#next-recharge-mins').html()) + 1) * 60 * 1000;
+    my.coins = isNaN(my.coins) ? 0 : my.coins;
+    my.nextRecharge = isNaN(my.nextRecharge) ? 20 * 60 * 1000 : my.nextRecharge;
   }
 
   /**
@@ -430,13 +445,14 @@
   /**
    * sends an HTTP-Request
    */
-  var request = function (url, method, body) {
+  var request = function (url, method, body, returntype) {
     method = method || "GET";
+    returntype = returntype || "json";
     return $.when().then(function () {
       return $.ajax({
         url: url,
         type: method,
-        dataType: "json",
+        dataType: returntype,
         data: body ? JSON.stringify(body) : undefined,
         timeout: timeout
       }).then(null, function (error) {
