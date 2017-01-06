@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.5
+// @version      1.1.6
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -12,6 +12,7 @@
    * change values to customize the script's behaviour
    */
   var options = {
+    joinOwnedGames: false,
     //set to 0 to ignore the number of participants
     maxParticipants: 0,
     //Array of names of games
@@ -292,8 +293,8 @@
       log("Not entering '%s' because I already entered", this.name);
       return false;
     }
-    if (this.owned) {
-      log("Not entering '%s' because I already own it", this.name);
+    if (this.owned && !options.joinOwnedGames) {
+      log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, !!options.joinOwnedGames);
       return false;
     }
     if (isInGameBlacklist(this.name)) {

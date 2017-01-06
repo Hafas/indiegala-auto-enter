@@ -6,7 +6,7 @@ Install Tampermonkey and then click [here](https://github.com/Hafas/indiegala-au
 
 ## Options
 Edit the script to change the `options`-Object
-
+* `joinOwnedGames` {`Boolean`} - whether or not to auto-enter giveaways of owned games		
 * `maxParticipants` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that already have at least `maxParticipants` participants
 * `gameBlacklist` {`Array<String/RegExp>`} - add names of games to this array if you don't want to auto-enter specific games (e.g. DLCs IndieGala doesn't recognized as owned or DLCs of games you don't own)
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not to only auto-enter guaranteed giveaways
@@ -23,12 +23,15 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.1.6* readded `joinOwnedGames`
+
 *1.1.5* Coins and recharge time are now fetched from the profile page instead, since IndieGala changed the API of `/get_user_level_and_coins` (fixed by [Yuping Zuo](https://github.com/zypA13510))
 
 *1.1.4* Added features to prevent some reasons the script may get stuck:
 * IndieGala's issues are being displayed in `alerts` which stops the script until okayed. If `interceptAlert` is set to true, the script will intercept and ignore these messages.
 * The script used to travel past the last giveaway page and go further and further and further and further and ... When reaching the last page, it will now return to the first page instead. See `waitOnEnd`.
 * Sometimes IndieGala seems to be under heavy load and doesn't respond to some requests. The script will now retry if a requests fails or times out. See `timeout`.
+* removed `joinOwnedGames`
 
 *1.1.3*
 * Some log changes.
