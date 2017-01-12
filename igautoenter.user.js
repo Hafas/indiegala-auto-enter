@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.6
+// @version      1.1.7
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -57,6 +57,7 @@
     $.when(task1, task2).done(function (payload1, payload2) {
       setLevel(payload1[0]);
       setData(payload2[0]);
+      my.coins = parseInt($("#silver-coins-menu").text()) || 0;
       log("myData:", my);
       if (!okToContinue()) {
         //will navigate to first page on next recharge
@@ -96,10 +97,10 @@
    * collects user information including level, coins and next recharge
    */
   function getLevel () {
-    return request("/giveaways/get_user_level_and_coins");
+    return request({url: "/giveaways/get_user_level_and_coins"});
   }
   function getUserData() {
-    return request("/profile", "GET", undefined, "html");
+    return request({url: "/profile", dataType: "html"}, {tryOnce: true});
   }
 
   /**
@@ -112,7 +113,11 @@
       }
       return giveaway.gameId;
     });
-    return request.post("/giveaways/match_games_in_steam_library", {"games_id": gameIds}).then(function (ownedIds) {
+    return request({
+      url: "/giveaways/match_games_in_steam_library",
+      method: "POST",
+      data: JSON.stringify({"games_id": gameIds})
+    }).then(function (ownedIds) {
       for (var i = 0; i < giveaways.length; ++i) {
         var giveaway = giveaways[i];
         for (var j = 0; j < ownedIds.length; ++j) {
@@ -140,7 +145,6 @@
   }
   function setData (data) {
     var parsed = $(data);
-    my.coins = parseInt($("#silver-coins-menu", parsed).text()) || 0;
     my.nextRecharge = (parseInt($("#next-recharge-mins", parsed).text()) + 1) * 60 * 1000 || 20 * 60 * 1000;
   }
 
@@ -333,7 +337,11 @@
    */
   Giveaway.prototype.enter = function () {
     info("Entering giveaway", this);
-    return request.post("/giveaways/new_entry", {giv_id: this.id, ticket_price: this.price});
+    return request({
+      method: "POST",
+      url: "/giveaways/new_entry",
+      data: JSON.stringify({giv_id: this.id, ticket_price: this.price})
+    });
   };
 
   /**
@@ -441,31 +449,27 @@
   /**
    * sends an HTTP-Request
    */
-  var request = function (url, method, body, returntype) {
-    method = method || "GET";
-    returntype = returntype || "json";
+  var request = function (props, opt) {
+    var defaultProps = {
+      method: "GET",
+      timeout: timeout,
+      dataType: "json"
+    };
+    props = $.extend({}, defaultProps, props);
+    opt = opt || {};
     return $.when().then(function () {
-      return $.ajax({
-        url: url,
-        type: method,
-        dataType: returntype,
-        data: body ? JSON.stringify(body) : undefined,
-        timeout: timeout
-      }).then(null, function (error) {
+      return $.ajax(props).then(null, function (error) {
         if (error.status === 200) {
           return $.Deferred().reject(error);
         }
-        log("Request to", method, url, "failed or timed out. Retrying ...", error);
-        return request(url, method, body);
+        if (opt.tryOnce) {
+          return $.Deferred().resolve([]);
+        } else {
+          log("Request to", props.method, props.url, "failed or timed out. Retrying ...", error);
+          return request(props, opt);
+        }
       });
     });
-  };
-
-  /**
-   * sends an HTTP-POST-Request
-   */
-  request.post = function (url, body) {
-    return request(url, "POST", body);
   };
 
   start();
