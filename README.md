@@ -23,6 +23,9 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.1.8*
+* FIX: If the available coins cannot be determined then assume the user has 240 coins (instead of 0)
+
 *1.1.7*
 * FIX: When the request to `/profile` fails, the script doesn't crash anymore. Furthermore the request won't be retried anymore and a default value for `my.nextRecharge` will be set (20 min)
 * `my.coins` are now retrieved from the current giveaway page instead of from `/profile`

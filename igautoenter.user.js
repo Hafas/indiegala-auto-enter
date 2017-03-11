@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.7
+// @version      1.1.8
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -57,7 +57,7 @@
     $.when(task1, task2).done(function (payload1, payload2) {
       setLevel(payload1[0]);
       setData(payload2[0]);
-      my.coins = parseInt($("#silver-coins-menu").text()) || 0;
+      my.coins = parseInt($("#silver-coins-menu").text()) || 240;
       log("myData:", my);
       if (!okToContinue()) {
         //will navigate to first page on next recharge
