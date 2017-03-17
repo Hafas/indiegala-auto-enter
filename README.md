@@ -12,9 +12,7 @@ Edit the script to change the `options`-Object
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not to only auto-enter guaranteed giveaways
 * `userBlacklist` {`Array<String/RegExp>`} - add names of users to this array if you don't want to auto-enter their giveaways
 * `skipSubGiveaways` {`Boolean`} - whether or not to auto-enter giveaways that are linked to subs. Those games are usually not recognized correctly as owned. *Added in `1.1.1`.*
-* `interceptAlert` {`Boolean`} - whether or not to intercept (and ignore) alerts. *Added in `1.1.4`.*
 * `waitOnEnd` {`Number`} - when reaching the last giveaway page the script will wait `waitOnEnd` minutes before it will navigate to the first page and resume its work. *Added in `1.1.4`.*
-* `timeout` {`Number`} - when making a request to IndieGala the script will wait `timeout` seconds before it will retry. *Added in `1.1.4`.*
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
 
 If there is an update, backup the options first. It will be overwritten otherwise.
@@ -23,8 +21,13 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
-*1.1.8*
-* FIX: If the available coins cannot be determined then assume the user has 240 coins (instead of 0)
+*2.0.0*
+* Navigation is now done internally. Meaning the page won't change its URL. This change results in increased performance and stability.
+* Added some UI, so the user can see what the script is currently doing.
+* removed `timeout` option
+* removed `interceptAlert` option
+
+*1.1.8* FIX: If the available coins cannot be determined then assume the user has 240 coins (instead of 0)
 
 *1.1.7*
 * FIX: When the request to `/profile` fails, the script doesn't crash anymore. Furthermore the request won't be retried anymore and a default value for `my.nextRecharge` will be set (20 min)
