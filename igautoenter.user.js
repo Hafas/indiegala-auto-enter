@@ -367,7 +367,7 @@
    * navigates to {pageNumber}th giveaway page
    */
   function navigateToPage (pageNumber) {
-    var target = "/giveaways/" + pageNumber + "/expiry/asc/level/all";
+    var target = "/giveaways/" + pageNumber + "/expiry/asc/level/" + my.level;
     log("navigating to", target);
     window.location = target;
     setTimeout(function () {
