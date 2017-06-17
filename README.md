@@ -23,6 +23,9 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.1.10*
+IndieGala now blocks fast consecutive requests, so a delay after a blocked requests (1 minute) has been implemented
+
 *1.1.9*
 * If the user is on level 0 we are requesting a filtered page by this level (by [Tiago Danin](https://github.com/TiagoDanin))
 * When the server responds with `insufficient_credit` (usually happens when we are defaulting the coins to 240), we are now setting the user's coins to the giveaway's price minus 1

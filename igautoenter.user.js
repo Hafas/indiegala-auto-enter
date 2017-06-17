@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.9
+// @version      1.1.10
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -473,12 +473,26 @@
         if (opt.tryOnce) {
           return $.Deferred().resolve([]);
         } else {
-          log("Request to", props.method, props.url, "failed or timed out. Retrying ...", error);
-          return request(props, opt);
+          //add some delay between requests to not put unnecessary strain on IndieGala's servers
+          var timeoutDelay = error.status === 403 ? 60 * 1000 : 10 * 1000;
+          return delay(function () {
+            log("Request to", props.method, props.url, "failed or timed out. Retrying ...", error);
+            return request(props, opt);
+          }, timeoutDelay);
         }
       });
     });
   };
+
+  function delay (fn, timeout) {
+    return $.Deferred(function (d) {
+      setTimeout(function () {
+        fn().then(function (value) {
+          d.resolve(value);
+        });
+      }, timeout);
+    });
+  }
 
   start();
 })();
