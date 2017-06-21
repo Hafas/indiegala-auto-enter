@@ -1,3 +1,6 @@
+# Not working
+IndieGala now requires a solved Captcha to enter a giveaway, so this script won't work anymore. You should deactivate this script (until IndieGala changes their mind).
+
 # indiegala-auto-enter
 A script to automatically enter Giveaways on IndieGala
 
