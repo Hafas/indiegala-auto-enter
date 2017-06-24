@@ -57,7 +57,6 @@
     $.when(task1, task2).done(function (payload1, payload2) {
       setLevel(payload1[0]);
       setData(payload2[0]);
-      my.coins = parseInt($("#silver-coins-menu").text()) || 240;
       log("myData:", my);
       if (!okToContinue()) {
         //will navigate to first page on next recharge
@@ -145,7 +144,16 @@
   }
   function setData (data) {
     var parsed = $(data);
-    my.nextRecharge = (parseInt($("#next-recharge-mins", parsed).text()) + 1) * 60 * 1000 || 20 * 60 * 1000;
+    my.nextRecharge = (parseInt($("#next-recharge-mins", parsed).text()) + 1) * 60 * 1000;
+    if (isNaN(my.nextRecharge)) {
+      error("could not determine next recharge. Setting default value");
+      my.nextRecharge = 20 * 60 * 1000;
+    }
+    my.coins = parseInt($(".galasilver-profile", parsed).text());
+    if (isNaN(my.coins)) {
+      error("could not determine number of coins. Setting default value");
+      my.coins = 240;
+    }
   }
 
   /**
