@@ -4,7 +4,7 @@
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
-// @require      https://gist.github.com/raw/2625891/waitForKeyElements.js
+// @require      https://greasyfork.org/scripts/6250-waitforkeyelements/code/waitForKeyElements.js?version=23756
 // @grant        none
 // ==/UserScript==
 
