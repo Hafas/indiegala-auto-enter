@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.10
+// @version      1.1.11
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
+// @require      https://gist.github.com/raw/2625891/waitForKeyElements.js
 // @grant        none
 // ==/UserScript==
 
@@ -62,8 +63,7 @@
         //will navigate to first page on next recharge
         return;
       }
-      var giveaways = getGiveaways();
-      return setOwned(giveaways).then(enterGiveaways).then(function () {
+      return getGiveaways().then(setOwned).then(enterGiveaways).then(function () {
         if (okToContinue()) {
           navigateToNext();
         }
@@ -201,6 +201,25 @@
     return callNext();
   }
 
+  /**
+   * parses and returns giveaways whenever the DOM is ready
+   */
+  function getGiveaways () {
+    var contentSelector = "#ajax-giv-list-cont .giv-list-cont";
+    var container = $(contentSelector);
+    if (container.length === 0) {
+      //content isn't there yet, so we wait until it is
+      debug("waiting for content to come ...");
+      return $.Deferred(function (d) {
+        waitForKeyElements(contentSelector, function (container) {
+          d.resolve(parseGiveaways(container));
+        });
+      });
+    } else {
+      return $.Deferred().resolve(parseGiveaways(container));
+    }
+  }
+
   var LEVEL_PATTERN = /LEVEL ([0-9]+)/;
   var PARTICIPANTS_PATTERN = /([0-9]+) participants/;
   var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
@@ -220,8 +239,8 @@
    idType {"APP" | "SUB" | null} - "APP" if the steamId is an appId. "SUB" if the steamId is a subId. null if this script is not sure
    gameId {String} - the gameId IndieGala gave this game. It's usually the appId with or without a suffix, or the subId with a "sub_"-prefix
    */
-  function getGiveaways () {
-    var giveawayDOMs = $(".col-xs-6.tickets-col .ticket-cont");
+  function parseGiveaways (container) {
+    var giveawayDOMs = $(".col-xs-6.tickets-col .ticket-cont", container);
     var giveaways = [];
     for (var i = 0; i < giveawayDOMs.length; ++i) {
       var giveawayDOM = giveawayDOMs[i];
