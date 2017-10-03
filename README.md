@@ -23,6 +23,9 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*1.1.12*
+Fixes due to minor DOM changes
+
 *1.1.11*
 Fixes due to minor DOM changes and due giveaways now being fetched on the client-side
 

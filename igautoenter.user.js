@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.11
+// @version      1.1.12
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -220,8 +220,7 @@
     }
   }
 
-  var LEVEL_PATTERN = /LEVEL ([0-9]+)/;
-  var PARTICIPANTS_PATTERN = /([0-9]+) participants/;
+  var LEVEL_PATTERN = /([0-9]+)\+/;
   var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
   var SUB_ID_PATTERN = /^sub_([0-9]+)$/;
   var FALLBACK_ID_PATTERN = /([0-9]+)/;
@@ -267,7 +266,7 @@
         price: parseInt($(".ticket-price strong", giveawayDOM).text()),
         minLevel: parseInt(LEVEL_PATTERN.exec(infoText)[1]),
         owned: undefined, //will be filled in later in setOwned()
-        participants: parseInt(PARTICIPANTS_PATTERN.exec($(".ticket-info-cont .fa.fa-users", giveawayDOM).parent().text())[1]),
+        participants: parseInt($(".tickets-sold", giveawayDOM).text()),
         guaranteed: infoText.indexOf("not guaranteed") === -1,
         by: $(".ticket-info-cont .steamnick a", giveawayDOM).text(),
         entered: $(".ticket-right aside", giveawayDOM).length === 0,
