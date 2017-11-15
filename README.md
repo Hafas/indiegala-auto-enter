@@ -23,6 +23,10 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*2.0.0*
+* Rewrite to get rid of jQuery-Dependency. Firefox 52+ or Chrome 55+ is now needed to use this script.
+* Fixes due to DOM changes
+
 *1.1.12*
 Fixes due to minor DOM changes
 

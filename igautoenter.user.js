@@ -1,10 +1,9 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      1.1.12
+// @version      2.0.0
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
-// @require      https://greasyfork.org/scripts/6250-waitforkeyelements/code/waitForKeyElements.js?version=23756
 // @grant        none
 // ==/UserScript==
 
@@ -12,7 +11,7 @@
   /**
    * change values to customize the script's behaviour
    */
-  var options = {
+  const options = {
     joinOwnedGames: false,
     //set to 0 to ignore the number of participants
     maxParticipants: 0,
@@ -32,13 +31,13 @@
     debug: false
   };
 
-  var waitOnEnd = options.waitOnEnd * 60 * 1000;
-  var timeout = options.timeout * 1000;
+  const waitOnEnd = options.waitOnEnd * 60 * 1000;
+  const timeout = options.timeout * 1000;
 
   /**
    * current user state
    */
-  var my = {
+  const my = {
     level: undefined,
     coins: undefined,
     nextRecharge: undefined
@@ -47,36 +46,35 @@
   /**
    * entry point of the script
    */
-  function start () {
+  async function start () {
     if (!getCurrentPage()) {
       //I'm not on a giveaway list page. Script stops here.
       log("Current page is not a giveway list page. Stopping script.");
       return;
     }
-    var task1 = getLevel();
-    var task2 = getUserData();
-    $.when(task1, task2).done(function (payload1, payload2) {
-      setLevel(payload1[0]);
-      setData(payload2[0]);
+    try {
+      const [level, userData] = await Promise.all([getLevel(), getUserData()]);
+      setLevel(level);
+      setData(userData);
       log("myData:", my);
       if (!okToContinue()) {
-        //will navigate to first page on next recharge
+        // will navigate to first page on next recharge
         return;
       }
-      return getGiveaways().then(setOwned).then(enterGiveaways).then(function () {
-        if (okToContinue()) {
-          navigateToNext();
-        }
-      });
-    }).fail(function (err) {
-      //Script stops here. Common cause is that the user is not logged in
+      const giveaways = await getGiveaways();
+      await setOwned(giveaways);
+      await enterGiveaways(giveaways);
+      if (okToContinue()) {
+        navigateToNext();
+      }
+    } catch (err) {
       error("Something went wrong:", err);
-    });
+    }
   }
 
-  var IdType = {
-    APP: "APP",
-    SUB: "SUB"
+  const IdType = {
+    APP: Symbol(),
+    SUB: Symbol()
   };
 
   /**
@@ -95,43 +93,38 @@
   /**
    * collects user information including level, coins and next recharge
    */
-  function getLevel () {
-    return request({url: "/giveaways/get_user_level_and_coins"});
+  async function getLevel () {
+    const response = await request("/giveaways/get_user_level_and_coins");
+    return response.json();
   }
-  function getUserData() {
-    return request({url: "/profile", dataType: "html"}, {tryOnce: true});
+  async function getUserData() {
+    const response = await request("/profile");
+    return response.text();
   }
 
   /**
    * sets the owned-property of each giveaway, by sending a request to IndieGala
    */
-  function setOwned (giveaways) {
-    var gameIds = giveaways.map(function (giveaway) {
-      if (giveaway.idType === IdType.APP) {
-        return giveaway.steamId;
-      }
-      return giveaway.gameId;
-    });
-    return request({
-      url: "/giveaways/match_games_in_steam_library",
+  async function setOwned (giveaways) {
+    const gameIds = giveaways.map(({idType, steamId, gameId}) => idType === IdType.APP ? steamId : gameId);
+    const response = await request("/giveaways/match_games_in_steam_library", {
       method: "POST",
-      data: JSON.stringify({"games_id": gameIds})
-    }).then(function (ownedIds) {
-      for (var i = 0; i < giveaways.length; ++i) {
-        var giveaway = giveaways[i];
-        for (var j = 0; j < ownedIds.length; ++j) {
-          if (giveaway.idType === IdType.APP && giveaway.steamId == ownedIds[j] || giveaway.gameId == ownedIds[j]) {
-            log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
-            giveaway.owned = true;
-            break;
-          }
-        }
-        if (!giveaway.owned) {
-          log("I don't seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
-          giveaway.owned = false;
+      body: JSON.stringify({"games_id": gameIds})
+    });
+    const ownedIds = await response.json();
+    log("ownedIds", ownedIds);
+    giveaways.forEach((giveaway) => {
+      for (let ownedId of ownedIds) {
+        if (giveaway.idType === IdType.APP && giveaway.steamId == ownedId || giveaway.gameId == ownedId) {
+          log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
+          giveaway.owned = true;
+          break;
         }
       }
-      return giveaways;
+      if (!giveaway.owned) {
+        log("I don't seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
+        giveaway.owned = false;
+      }
     });
   }
 
@@ -143,13 +136,14 @@
     my.level = parseInt(data.current_level) || 0;
   }
   function setData (data) {
-    var parsed = $(data);
-    my.nextRecharge = (parseInt($("#next-recharge-mins", parsed).text()) + 1) * 60 * 1000;
+    const doc = document.implementation.createHTMLDocument("profile");
+    doc.documentElement.innerHTML = data;
+    my.nextRecharge = (parseInt(doc.getElementById("next-recharge-mins").textContent) + 1) * 60 * 1000;
     if (isNaN(my.nextRecharge)) {
       error("could not determine next recharge. Setting default value");
       my.nextRecharge = 20 * 60 * 1000;
     }
-    my.coins = parseInt($(".galasilver-profile", parsed).text());
+    my.coins = parseInt(doc.getElementsByClassName("galasilver-profile")[0].textContent);
     if (isNaN(my.coins)) {
       error("could not determine number of coins. Setting default value");
       my.coins = 240;
@@ -159,71 +153,45 @@
   /**
    * iterates through each giveaway and enters them, if possible and desired
    */
-  function enterGiveaways (giveaways) {
+  async function enterGiveaways (giveaways) {
     log("Entering giveaways", giveaways);
-    return eachSeries(giveaways, function (giveaway) {
+    for (let giveaway of giveaways) {
       if (!giveaway.shouldEnter()) {
-        return $.when();
+        continue;
       }
-      return giveaway.enter().then(function (payload) {
-        log("giveaway entered", "payload", payload);
-        if (payload.status === "ok") {
-          my.coins = payload.new_amount;
-        } else {
-          error("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
-          if (payload.status === "insufficient_credit") {
-            //we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
-            if (isNaN(my.coins)) {
-              my.coins = giveaway.price - 1;
-            } else {
-              my.coins = Math.min(my.coins, giveaway.price - 1);
-            }
+      const payload = await giveaway.enter();
+      log("giveaway entered", "payload", payload);
+      if (payload.status === "ok") {
+        my.coins = payload.new_amount;
+      } else {
+        error("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
+        if (payload.status === "insufficient_credit") {
+          //we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
+          if (isNaN(my.coins)) {
+            my.coins = giveaway.price - 1;
+          } else {
+            my.coins = Math.min(my.coins, giveaway.price - 1);
           }
         }
-      });
-    });
-  }
-
-  /**
-   * utility function to call promises successively
-   */
-  function eachSeries (collection, action) {
-    if (!Array.isArray(collection)) {
-      return $.when();
-    }
-    var currentIndex = 0;
-    function callNext () {
-      if (currentIndex >= collection.length) {
-        return $.when();
       }
-      return $.when(action(collection[currentIndex++])).then(callNext);
     }
-    return callNext();
   }
 
   /**
    * parses and returns giveaways whenever the DOM is ready
    */
-  function getGiveaways () {
-    var contentSelector = "#ajax-giv-list-cont .giv-list-cont";
-    var container = $(contentSelector);
-    if (container.length === 0) {
+  async function getGiveaways () {
+    while (!document.querySelector("#ajax-giv-list-cont .giv-list-cont")) {
       //content isn't there yet, so we wait until it is
-      debug("waiting for content to come ...");
-      return $.Deferred(function (d) {
-        waitForKeyElements(contentSelector, function (container) {
-          d.resolve(parseGiveaways(container));
-        });
-      });
-    } else {
-      return $.Deferred().resolve(parseGiveaways(container));
+      log("waiting for content to come ...");
+      await wait(300);
     }
+    return parseGiveaways();
   }
 
-  var LEVEL_PATTERN = /([0-9]+)\+/;
-  var APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
-  var SUB_ID_PATTERN = /^sub_([0-9]+)$/;
-  var FALLBACK_ID_PATTERN = /([0-9]+)/;
+  const APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
+  const SUB_ID_PATTERN = /^sub_([0-9]+)$/;
+  const FALLBACK_ID_PATTERN = /([0-9]+)/;
   /**
    * parses the DOM and extracts the giveaway. Returns Giveaway-Objects, which include the following properties:
    id {String} - the giveaway id
@@ -238,16 +206,12 @@
    idType {"APP" | "SUB" | null} - "APP" if the steamId is an appId. "SUB" if the steamId is a subId. null if this script is not sure
    gameId {String} - the gameId IndieGala gave this game. It's usually the appId with or without a suffix, or the subId with a "sub_"-prefix
    */
-  function parseGiveaways (container) {
-    var giveawayDOMs = $(".col-xs-6.tickets-col .ticket-cont", container);
-    var giveaways = [];
-    for (var i = 0; i < giveawayDOMs.length; ++i) {
-      var giveawayDOM = giveawayDOMs[i];
-      var infoText = $(".price-type-cont .right", giveawayDOM).text();
-      var gameId = $(".giveaway-game-id", giveawayDOM).attr("value");
-      var match;
-      var steamId = null;
-      var idType = null;
+  function parseGiveaways () {
+    return Array.from(document.getElementsByClassName("tickets-col")).map((giveawayDOM) => {
+      const gameId = giveawayDOM.getElementsByClassName("giveaway-game-id")[0].attributes.value.value;
+      let match;
+      let steamId = null;
+      let idType = null;
       if (match = APP_ID_PATTERN.exec(gameId)) {
         steamId = match[1];
         idType = IdType.APP;
@@ -260,42 +224,29 @@
           steamId = match[1];
         }
       }
-      giveaways.push(new Giveaway({
-        id: $(".ticket-right .relative", giveawayDOM).attr("rel"),
-        name: $(".game-img-cont a", giveawayDOM).attr("title"),
-        price: parseInt($(".ticket-price strong", giveawayDOM).text()),
-        minLevel: parseInt(LEVEL_PATTERN.exec(infoText)[1]),
+      return new Giveaway({
+        id: giveawayDOM.querySelector("[rel]").attributes.rel.value,
+        name: giveawayDOM.getElementsByTagName("a")[0].attributes.title.value,
+        price: parseInt(giveawayDOM.getElementsByClassName("ticket-price")[0].textContent),
+        minLevel: parseInt(giveawayDOM.getElementsByClassName("type-level")[0].textContent),
+        // TODO check "on-steam-library-corner"-element
         owned: undefined, //will be filled in later in setOwned()
-        participants: parseInt($(".tickets-sold", giveawayDOM).text()),
-        guaranteed: infoText.indexOf("not guaranteed") === -1,
-        by: $(".ticket-info-cont .steamnick a", giveawayDOM).text(),
-        entered: $(".ticket-right aside", giveawayDOM).length === 0,
+        participants: parseInt(giveawayDOM.getElementsByClassName("tickets-sold")[0].textContent),
+        guaranteed: giveawayDOM.getElementsByClassName("price-type-cont")[0].classList.contains("palette-background-11"),
+        by: giveawayDOM.getElementsByClassName("steamnick")[0].getElementsByTagName("a")[0].textContent,
+        // TODO instead of 'entered' there should be something like 'boughtTickets' to consider these extra odds giveaways
+        entered: giveawayDOM.getElementsByTagName("aside").length === 0,
         steamId: steamId,
         idType: idType,
         gameId: gameId
-      }));
-    }
-    return giveaways;
-  }
-
-  /**
-   * whether or not a game by name is in the blacklist
-   */
-  function isInGameBlacklist (name) {
-    return isInBlacklist(options.gameBlacklist, name);
-  }
-
-  /**
-   * whether or not a user by name is in the blacklist
-   */
-  function isInUserBlacklist (name) {
-    return isInBlacklist(options.userBlacklist, name);
+      });
+    });
   }
 
   /**
    * utility function that checks if a name is in a blacklist
    */
-  function isInBlacklist(blacklist, name) {
+  const isInBlacklist = (blacklist) => (name) => {
     if (!Array.isArray(blacklist)) {
       return false;
     }
@@ -313,70 +264,79 @@
   }
 
   /**
-   * Giveaway constructor
+   * whether or not a game by name is in the blacklist
    */
-  function Giveaway (props) {
-    for (var key in props) {
-      if (props.hasOwnProperty(key)) {
-        this[key] = props[key];
+  const isInGameBlacklist = isInBlacklist(options.gameBlacklist);
+
+  /**
+   * whether or not a user by name is in the blacklist
+   */
+  const isInUserBlacklist = isInBlacklist(options.userBlacklist);
+
+  class Giveaway {
+    constructor (props) {
+      for (let key in props) {
+        if (props.hasOwnProperty(key)) {
+          this[key] = props[key];
+        }
       }
     }
+
+    /**
+     * returns true if the script can and should enter a giveaway
+     */
+    shouldEnter () {
+      if (this.entered) {
+        log("Not entering '%s' because I already entered", this.name);
+        return false;
+      }
+      if (this.owned && !options.joinOwnedGames) {
+        log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, !!options.joinOwnedGames);
+        return false;
+      }
+      if (isInGameBlacklist(this.name)) {
+        log("Not entering '%s' because this game is on my blacklist", this.name);
+        return false;
+      }
+      if (isInUserBlacklist(this.by)) {
+        log("Not entering '%s' because the user '%s' is on my blacklist", this.name, this.by);
+        return false;
+      }
+      if (!this.guaranteed && options.onlyEnterGuaranteed) {
+        log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, !!options.onlyEnteredGuaranteed);
+        return false;
+      }
+      if (options.maxParticipants && this.participants > options.maxParticipants) {
+        log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
+        return false;
+      }
+      if (this.idType === IdType.SUB && options.skipSubGiveaways) {
+        log("Not entering '%s' because this giveaway is linked to a sub (skipSubGiveaways? %s)", this.name, !!options.skipSubGiveaways);
+        return false;
+      }
+      if (this.minLevel > my.level) {
+        log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
+        return false;
+      }
+      if (this.price > my.coins) {
+        log("Not entering '%s' because my funds are insufficient (mine: %s, needed: %s)", this.name, my.coins, this.price);
+        return false;
+      }
+      return true;
+    }
+
+    /**
+     * sends a POST-request to enter a giveaway
+     */
+    async enter () {
+      info("Entering giveaway", this);
+      const response = await request("/giveaways/new_entry", {
+        method: "POST",
+        body: JSON.stringify({giv_id: this.id, ticket_price: this.price})
+      });
+      return response.json();
+    }
   }
-
-  /**
-   * returns true if the script can and should enter a giveaway
-   */
-  Giveaway.prototype.shouldEnter = function () {
-    if (this.entered) {
-      log("Not entering '%s' because I already entered", this.name);
-      return false;
-    }
-    if (this.owned && !options.joinOwnedGames) {
-      log("Not entering '%s' because I already own it (joinOwnedGames? %s)", this.name, !!options.joinOwnedGames);
-      return false;
-    }
-    if (isInGameBlacklist(this.name)) {
-      log("Not entering '%s' because this game is on my blacklist", this.name);
-      return false;
-    }
-    if (isInUserBlacklist(this.by)) {
-      log("Not entering '%s' because the user '%s' is on my blacklist", this.name, this.by);
-      return false;
-    }
-    if (!this.guaranteed && options.onlyEnterGuaranteed) {
-      log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, !!options.onlyEnteredGuaranteed);
-      return false;
-    }
-    if (options.maxParticipants && this.participants > options.maxParticipants) {
-      log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
-      return false;
-    }
-    if (this.idType === IdType.SUB && options.skipSubGiveaways) {
-      log("Not entering '%s' because this giveaway is linked to a sub (skipSubGiveaways? %s)", this.name, !!options.skipSubGiveaways);
-      return false;
-    }
-    if (this.minLevel > my.level) {
-      log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
-      return false;
-    }
-    if (this.price > my.coins) {
-      log("Not entering '%s' because my funds are insufficient (mine: %s, needed: %s)", this.name, my.coins, this.price);
-      return false;
-    }
-    return true;
-  };
-
-  /**
-   * sends a POST-request to enter a giveaway
-   */
-  Giveaway.prototype.enter = function () {
-    info("Entering giveaway", this);
-    return request({
-      method: "POST",
-      url: "/giveaways/new_entry",
-      data: JSON.stringify({giv_id: this.id, ticket_price: this.price})
-    });
-  };
 
   /**
    * navigate to the first giveaway page
@@ -411,44 +371,18 @@
   }
 
   /**
-   * calls console.log if debug is enabled
+   * calls console[method] if debug is enabled
    */
-  function log () {
-    if (!options.debug) {
-      return;
+  const printDebug = (method) => (...args) => {
+    if (options.debug) {
+      console[method](...args);
     }
-    console.log.apply(console, arguments);
   }
 
-  /**
-   * calls console.error if debug is enabled
-   */
-  function error () {
-    if (!options.debug) {
-      return;
-    }
-    console.error.apply(console, arguments);
-  }
-
-  /**
-   * calls console.info if debug is enabled
-   */
-  function info () {
-    if (!options.debug) {
-      return;
-    }
-    console.info.apply(console, arguments);
-  }
-
-  /**
-   * calls console.warn if debug is enabled
-   */
-  function warn () {
-    if (!options.debug) {
-      return;
-    }
-    console.warn.apply(console, arguments);
-  }
+  const log = printDebug("log");
+  const error = printDebug("error");
+  const info = printDebug("info");
+  const warn = printDebug("warn");
 
   var PAGE_NUMBER_PATTERN = /^\/giveaways(?:\/([0-9]+)\/|\/?$)/;
   /**
@@ -471,7 +405,13 @@
    */
   function hasNext () {
     //find the red links and see if one of them is "NEXT"
-    return $("a.prev-next.palette-background-1").text().indexOf("NEXT") >= 0;
+    const links = document.querySelectorAll("a.prev-next.palette-background-1");
+    for (let link of links) {
+      if (link.textContent.includes("NEXT")) {
+        return true;
+      }
+    }
+    return false;
   }
 
   if (options.interceptAlert) {
@@ -483,41 +423,28 @@
   /**
    * sends an HTTP-Request
    */
-  var request = function (props, opt) {
-    var defaultProps = {
-      method: "GET",
-      timeout: timeout,
-      dataType: "json"
-    };
-    props = $.extend({}, defaultProps, props);
-    opt = opt || {};
-    return $.when().then(function () {
-      return $.ajax(props).then(null, function (error) {
-        if (error.status === 200) {
-          return $.Deferred().reject(error);
-        }
-        if (opt.tryOnce) {
-          return $.Deferred().resolve([]);
-        } else {
-          //add some delay between requests to not put unnecessary strain on IndieGala's servers
-          var timeoutDelay = error.status === 403 ? 60 * 1000 : 10 * 1000;
-          return delay(function () {
-            log("Request to", props.method, props.url, "failed or timed out. Retrying ...", error);
-            return request(props, opt);
-          }, timeoutDelay);
-        }
-      });
-    });
-  };
+  async function request (resource, _options) {
+    const options = Object.assign({
+      credentials: "include"
+    }, _options);
+    try {
+      const response = await fetch(document.location.origin + resource, options);
+      if (response.ok) {
+        return response;
+      }
+      const timeoutDelay = response.status === 403 ? 60 * 1000 : 10 * 1000;
+      await wait(timeoutDelay);
+      // retry
+      return request(resource, _options);
+    } catch (err) {
+      await wait(1000);
+      // retry
+      return request(resource, _options);
+    }
+  }
 
-  function delay (fn, timeout) {
-    return $.Deferred(function (d) {
-      setTimeout(function () {
-        fn().then(function (value) {
-          d.resolve(value);
-        });
-      }, timeout);
-    });
+  function wait (timeout) {
+    return new Promise((resolve) => setTimeout(resolve, timeout));
   }
 
   start();
