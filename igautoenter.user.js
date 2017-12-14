@@ -136,17 +136,23 @@
     my.level = parseInt(data.current_level) || 0;
   }
   function setData (data) {
-    const doc = document.implementation.createHTMLDocument("profile");
-    doc.documentElement.innerHTML = data;
-    my.nextRecharge = (parseInt(doc.getElementById("next-recharge-mins").textContent) + 1) * 60 * 1000;
-    if (isNaN(my.nextRecharge)) {
-      error("could not determine next recharge. Setting default value");
-      my.nextRecharge = 20 * 60 * 1000;
-    }
-    my.coins = parseInt(doc.getElementsByClassName("galasilver-profile")[0].textContent);
-    if (isNaN(my.coins)) {
-      error("could not determine number of coins. Setting default value");
-      my.coins = 240;
+    try {
+      const doc = document.implementation.createHTMLDocument("profile");
+      doc.documentElement.innerHTML = data;
+      my.nextRecharge = (parseInt(doc.getElementById("next-recharge-mins").textContent) + 1) * 60 * 1000;
+      if (isNaN(my.nextRecharge)) {
+        error("could not determine next recharge. Setting default value");
+        my.nextRecharge = 20 * 60 * 1000;
+      }
+      my.coins = parseInt(doc.getElementsByClassName("galasilver-profile")[0].textContent);
+      if (isNaN(my.coins)) {
+        error("could not determine number of coins. Setting default value");
+        my.coins = 240;
+      }
+    } catch (e) {
+      warn("Failed to parse profile page. Account might be locked?", e);
+      my.nextRecharge = my.nextRecharge || 20 * 60 * 1000;
+      my.coins = my.coins || 240;
     }
   }
 
