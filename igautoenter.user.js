@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.0.0
+// @version      2.0.1
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -231,23 +231,41 @@
         }
       }
       return new Giveaway({
-        id: giveawayDOM.querySelector("[rel]").attributes.rel.value,
-        name: giveawayDOM.getElementsByTagName("a")[0].attributes.title.value,
-        price: parseInt(giveawayDOM.getElementsByClassName("ticket-price")[0].textContent),
-        minLevel: parseInt(giveawayDOM.getElementsByClassName("type-level")[0].textContent),
+        id: getGiveawayId(giveawayDOM),
+        name: getGiveawayName(giveawayDOM),
+        price: getGiveawayPrice(giveawayDOM),
+        minLevel: getGiveawayMinLevel(giveawayDOM),
         // TODO check "on-steam-library-corner"-element
         owned: undefined, //will be filled in later in setOwned()
-        participants: parseInt(giveawayDOM.getElementsByClassName("tickets-sold")[0].textContent),
-        guaranteed: giveawayDOM.getElementsByClassName("price-type-cont")[0].classList.contains("palette-background-11"),
-        by: giveawayDOM.getElementsByClassName("steamnick")[0].getElementsByTagName("a")[0].textContent,
+        participants: getGiveawayParticipants(giveawayDOM),
+        guaranteed: getGiveawayGuaranteed(giveawayDOM),
+        by: getGiveawayBy(giveawayDOM),
         // TODO instead of 'entered' there should be something like 'boughtTickets' to consider these extra odds giveaways
-        entered: giveawayDOM.getElementsByTagName("aside").length === 0,
+        entered: getGiveawayEntered(giveawayDOM),
         steamId: steamId,
         idType: idType,
         gameId: gameId
       });
     });
   }
+
+  const withFailSafe = (fn) => (...args) => {
+    try {
+      return fn(...args);
+    } catch (err) {
+      error(...args, err);
+      return undefined;
+    }
+  }
+
+  const getGiveawayId = withFailSafe((giveawayDOM) => giveawayDOM.querySelector("[rel]").attributes.rel.value);
+  const getGiveawayName = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByTagName("a")[0].attributes.title.value);
+  const getGiveawayPrice = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("ticket-price")[0].textContent));
+  const getGiveawayMinLevel = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("type-level")[0].textContent));
+  const getGiveawayParticipants = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("tickets-sold")[0].textContent));
+  const getGiveawayGuaranteed = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("price-type-cont")[0].classList.contains("palette-background-11"));
+  const getGiveawayBy = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("steamnick")[0].getElementsByTagName("a")[0].textContent);
+  const getGiveawayEntered = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByTagName("aside").length === 0);
 
   /**
    * utility function that checks if a name is in a blacklist
