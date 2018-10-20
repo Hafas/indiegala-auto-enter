@@ -16,8 +16,8 @@ Edit the script to change the `options`-Object
 * `waitOnEnd` {`Number`} - when reaching the last giveaway page the script will wait `waitOnEnd` minutes before it will navigate to the first page and resume its work. *Added in `1.1.4`.*
 * `timeout` {`Number`} - when making a request to IndieGala the script will wait `timeout` seconds before it will retry. *Added in `1.1.4`.*
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
-* `steamApiKey` {`String`} - your personal Steam API key. You can generate one [here](https://steamcommunity.com/dev/apikey). Don't share the key with anyone. *Added in `2.1.0`.*
-* `steamUserId` {`String`} - your Steam Id. *Added in `2.1.0`.*
+* `steamApiKey` {`String`} - your personal Steam API key. You can generate one here: https://steamcommunity.com/dev/apikey. Don't share the key with anyone. *Added in `2.1.0`.*
+* `steamUserId` {`String`} - your Steam Id 64. You can see determine yours by using this tool: https://profile.tf *Added in `2.1.0`.*
 
 If there is an update, backup the options first. It will be overwritten otherwise.
 
@@ -25,6 +25,8 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*2.1.2*
+* Added a `@connect` statement
 *2.1.1*
 * FIX: Forgot to actually use `skipOwnedGames` instead of `joinOwnedGames`
 
