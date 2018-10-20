@@ -27,7 +27,7 @@ I don't take any responsibility for damage caused by this software. Use this sof
 ## Release Notes
 *2.1.0*
 * `joinOwnedGames` removed
-* Options `skipOwnedGames`, `steamApiKey` and `steamUserId` added (see [Options][#options] for more information)
+* Options `skipOwnedGames`, `steamApiKey` and `steamUserId` added (see [Options](#options) for more information)
 
 *2.0.2*
 * Handling of 'Whooops! Something went wrong.'
