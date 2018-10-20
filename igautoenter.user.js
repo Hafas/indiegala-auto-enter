@@ -8,7 +8,12 @@
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.deleteValue
-// @connect api.steampowered.com
+// @grant        GM_xmlhttpRequest
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
+// @connect      api.steampowered.com
 // ==/UserScript==
 
 (function () {

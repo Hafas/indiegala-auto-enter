@@ -27,6 +27,8 @@ I don't take any responsibility for damage caused by this software. Use this sof
 ## Release Notes
 *2.1.2*
 * Added a `@connect` statement
+* Made adjustments for ViolentMonkey
+
 *2.1.1*
 * FIX: Forgot to actually use `skipOwnedGames` instead of `joinOwnedGames`
 
