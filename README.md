@@ -6,7 +6,7 @@ Install Tampermonkey and then click [here](https://github.com/Hafas/indiegala-au
 
 ## Options
 Edit the script to change the `options`-Object
-* `joinOwnedGames` {`Boolean`} - whether or not to auto-enter giveaways of owned games		
+* `skipOwnedGames` {`Boolean`} - whether or not to skip giveaways of owned games. Requires `steamApiKey` and `steamUserId` if set to `true`. *Added in `2.1.0`.*
 * `maxParticipants` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that already have at least `maxParticipants` participants
 * `gameBlacklist` {`Array<String/RegExp>`} - add names of games to this array if you don't want to auto-enter specific games (e.g. DLCs IndieGala doesn't recognized as owned or DLCs of games you don't own)
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not to only auto-enter guaranteed giveaways
@@ -16,6 +16,8 @@ Edit the script to change the `options`-Object
 * `waitOnEnd` {`Number`} - when reaching the last giveaway page the script will wait `waitOnEnd` minutes before it will navigate to the first page and resume its work. *Added in `1.1.4`.*
 * `timeout` {`Number`} - when making a request to IndieGala the script will wait `timeout` seconds before it will retry. *Added in `1.1.4`.*
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
+* `steamApiKey` {`String`} - your personal Steam API key. You can generate one [here](https://steamcommunity.com/dev/apikey). Don't share the key with anyone. *Added in `2.1.0`.*
+* `steamUserId` {`String`} - your Steam Id. *Added in `2.1.0`.*
 
 If there is an update, backup the options first. It will be overwritten otherwise.
 
@@ -23,6 +25,10 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*2.1.0*
+* `joinOwnedGames` removed
+* Options `skipOwnedGames`, `steamApiKey` and `steamUserId` added (see [Options][#options] for more information)
+
 *2.0.2*
 * Handling of 'Whooops! Something went wrong.'
 

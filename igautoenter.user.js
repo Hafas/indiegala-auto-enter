@@ -1,10 +1,13 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.0.2
+// @version      2.1.0
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
-// @grant        none
+// @grant        GM.xmlHttpRequest
+// @grant        GM.getValue
+// @grant        GM.setValue
+// @grant        GM.deleteValue
 // ==/UserScript==
 
 (function () {
@@ -12,7 +15,7 @@
    * change values to customize the script's behaviour
    */
   const options = {
-    joinOwnedGames: false,
+    skipOwnedGames: false,
     //set to 0 to ignore the number of participants
     maxParticipants: 0,
     //Array of names of games
@@ -28,7 +31,11 @@
     //how many seconds to wait for a respond by IndieGala
     timeout: 30,
     //Display logs
-    debug: false
+    debug: false,
+    //Your Steam API key (keep it private!)
+    steamApiKey: null,
+    //Your Steam user id
+    steamUserId: null
   };
 
   const waitOnEnd = options.waitOnEnd * 60 * 1000;
@@ -40,7 +47,8 @@
   const my = {
     level: undefined,
     coins: undefined,
-    nextRecharge: undefined
+    nextRecharge: undefined,
+    ownedGames: new Set()
   };
 
   /**
@@ -54,16 +62,17 @@
     }
     try {
       startWatchdog();
-      const [level, userData] = await Promise.all([getLevel(), getUserData()]);
+      const [level, userData, ownedGames] = await Promise.all([getLevel(), getUserData(), getOwnedGames()]);
       setLevel(level);
       setData(userData);
+      setOwnedGames(ownedGames);
       log("myData:", my);
       if (!okToContinue()) {
         // will navigate to first page on next recharge
         return;
       }
       const giveaways = await getGiveaways();
-      await setOwned(giveaways);
+      setOwned(giveaways);
       await enterGiveaways(giveaways);
       if (okToContinue()) {
         navigateToNext();
@@ -102,29 +111,36 @@
     const response = await request("/profile");
     return response.text();
   }
+  async function getOwnedGames() {
+    if (!options.skipOwnedGames) {
+      return [];
+    }
+    const { steamApiKey, steamUserId } = options;
+    if (!steamApiKey || !steamUserId) {
+      warn("You must set both 'steamApiKey' and 'steamUserId' to use 'skipOwnedGames'! Proceeding without checking owned games");
+      return [];
+    }
+    let ownedGames = await getFromCache("ownedGames");
+    if (ownedGames) {
+      return ownedGames;
+    }
+    const { responseText } = await corsRequest(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${steamApiKey}&steamid=${steamUserId}&format=json`);
+    const { games } = JSON.parse(responseText).response;
+    ownedGames = games.map(({ appid }) => String(appid));
+    await saveToCache("ownedGames", ownedGames, 60);
+    return ownedGames;
+  }
 
   /**
-   * sets the owned-property of each giveaway, by sending a request to IndieGala
+   * sets the owned-property of each giveaway
    */
-  async function setOwned (giveaways) {
-    const gameIds = giveaways.map(({idType, steamId, gameId}) => idType === IdType.APP ? steamId : gameId);
-    const response = await request("/giveaways/match_games_in_steam_library", {
-      method: "POST",
-      body: JSON.stringify({"games_id": gameIds})
-    });
-    const ownedIds = await response.json();
-    log("ownedIds", ownedIds);
+  function setOwned (giveaways) {
     giveaways.forEach((giveaway) => {
-      for (let ownedId of ownedIds) {
-        if (giveaway.idType === IdType.APP && giveaway.steamId == ownedId || giveaway.gameId == ownedId) {
-          log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
-          giveaway.owned = true;
-          break;
-        }
-      }
-      if (!giveaway.owned) {
+      giveaway.owned = my.ownedGames.has(giveaway.steamId);
+      if (giveaway.owned) {
+        log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
+      } else {
         log("I don't seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
-        giveaway.owned = false;
       }
     });
   }
@@ -155,6 +171,9 @@
       my.nextRecharge = my.nextRecharge || 20 * 60 * 1000;
       my.coins = my.coins || 240;
     }
+  }
+  function setOwnedGames (data) {
+    my.ownedGames = new Set(data);
   }
 
   /**
@@ -236,7 +255,6 @@
         name: getGiveawayName(giveawayDOM),
         price: getGiveawayPrice(giveawayDOM),
         minLevel: getGiveawayMinLevel(giveawayDOM),
-        // TODO check "on-steam-library-corner"-element
         owned: undefined, //will be filled in later in setOwned()
         participants: getGiveawayParticipants(giveawayDOM),
         guaranteed: getGiveawayGuaranteed(giveawayDOM),
@@ -468,6 +486,23 @@
     }
   }
 
+  async function corsRequest (resource, options) {
+    return new Promise((resolve, reject) => {
+      GM.xmlHttpRequest(Object.assign({
+        method: "GET",
+        url: resource
+      }, options, {
+        onerror (response) {
+          error("corsRequest failed", response);
+          reject();
+        },
+        onload (response) {
+          resolve(response);
+        }
+      }));
+    });
+  }
+
   function wait (timeout) {
     return new Promise((resolve) => setTimeout(resolve, timeout));
   }
@@ -486,6 +521,39 @@
       }
       await wait(1000);
     }
+  }
+
+  async function getFromCache (...args) {
+    const [key, defaultValue] = args;
+    const rawValue = await GM.getValue(key, defaultValue);
+    if (rawValue === undefined && args.length === 2) {
+      return defaultValue;
+    }
+    if (!rawValue || typeof rawValue !== "string") {
+      return rawValue;
+    }
+    try {
+      const { expires, value } = JSON.parse(rawValue);
+      if (new Date().getTime() > new Date(expires).getTime()) {
+        //value has expired
+        await GM.deleteValue(key);
+        return GM.getValue(key, defaultValue);
+      }
+      return value;
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return rawValue;
+      }
+      throw error;
+    }
+  }
+
+  async function saveToCache (key, value, duration) {
+    const object = {
+      expires: new Date(new Date().getTime() + duration * 60 * 1000),
+      value
+    };
+    await GM.setValue(key, JSON.stringify(object));
   }
 
   start();
