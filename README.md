@@ -25,6 +25,9 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*2.1.1*
+* FIX: Forgot to actually use `skipOwnedGames` instead of `joinOwnedGames`
+
 *2.1.0*
 * `joinOwnedGames` removed
 * Options `skipOwnedGames`, `steamApiKey` and `steamUserId` added (see [Options](#options) for more information)
