@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.0.1
+// @version      2.0.2
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -53,6 +53,7 @@
       return;
     }
     try {
+      startWatchdog();
       const [level, userData] = await Promise.all([getLevel(), getUserData()]);
       setLevel(level);
       setData(userData);
@@ -469,6 +470,22 @@
 
   function wait (timeout) {
     return new Promise((resolve) => setTimeout(resolve, timeout));
+  }
+
+  function reload () {
+    log("reloading page");
+    window.location.reload();
+  }
+
+  async function startWatchdog () {
+		while (true) {
+      // keep watch for the warning cover - if it becomes visible reload the page
+      if (document.querySelector(".warning-cover").offsetParent) {
+        reload();
+        break;
+      }
+      await wait(1000);
+    }
   }
 
   start();

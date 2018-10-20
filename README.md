@@ -23,6 +23,9 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*2.0.2*
+* Handling of 'Whooops! Something went wrong.'
+
 *2.0.1*
 * Added measure to react to slight DOM changes
 
