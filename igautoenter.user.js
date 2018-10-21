@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.1.2
+// @version      2.2.0
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -24,6 +24,8 @@
     skipOwnedGames: false,
     //set to 0 to ignore the number of participants
     maxParticipants: 0,
+    //set to 0 to ignore the price
+    maxPrice: 0,
     //Array of names of games
     gameBlacklist: [],
     onlyEnterGuaranteed: false,
@@ -356,7 +358,11 @@
         return false;
       }
       if (options.maxParticipants && this.participants > options.maxParticipants) {
-        log("Not entering '%s' because too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
+        log("Not entering '%s' because of too many are participating (participants: %s, max: %s)", this.name, this.participants, options.maxParticipants);
+        return false;
+      }
+      if (options.maxPrice && this.price > options.maxPrice) {
+        log("Not entering '%s' because of too expensive price (price: %s, max: %s)", this.name, this.price, options.maxPrice);
         return false;
       }
       if (this.idType === IdType.SUB && options.skipSubGiveaways) {
