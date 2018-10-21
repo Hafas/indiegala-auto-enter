@@ -522,6 +522,7 @@
 		while (true) {
       // keep watch for the warning cover - if it becomes visible reload the page
       if (document.querySelector(".warning-cover").offsetParent) {
+        await wait(5000);
         reload();
         break;
       }

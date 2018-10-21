@@ -25,6 +25,9 @@ If there is an update, backup the options first. It will be overwritten otherwis
 I don't take any responsibility for damage caused by this software. Use this software at your own risk.
 
 ## Release Notes
+*2.2.0*
+* Add delay before reloading on error
+
 *2.1.2*
 * Added a `@connect` statement
 * Made adjustments for ViolentMonkey
