@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.2.0
+// @version      2.2.1
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -486,7 +486,7 @@
   function navigateToPage (pageNumber) {
     var target = "/giveaways/" + pageNumber + "/expiry/asc/level/" + (my.level === 0 ? "0" : "all");
     log("navigating to", target);
-    window.location = target;
+    window.location.href = target;
     setTimeout(function () {
       log("Navigation seems stuck. Retrying ...");
       navigateToPage(pageNumber);
