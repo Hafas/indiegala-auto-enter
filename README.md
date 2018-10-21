@@ -7,8 +7,9 @@ Install Tampermonkey and then click [here](https://github.com/Hafas/indiegala-au
 ## Options
 Edit the script to change the `options`-Object
 * `skipOwnedGames` {`Boolean`} - whether or not to skip giveaways of owned games. Requires `steamApiKey` and `steamUserId` if set to `true`. *Added in `2.1.0`.*
+* `skipDLCs` {`Boolean/String`} - whether or not to skip giveaways of DLCs. You can also set it to `"missing_basegame"` to only skip DLCs of which you don't own the basegame. This option `"missing_basegame"` however requires you to set `steamApiKey` and `steamUserId`. *Added in `2.2.0`.*
 * `maxParticipants` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that already have at least `maxParticipants` participants
-* `maxPrice` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that are more expensive than `maxPrince` points.
+* `maxPrice` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that are more expensive than `maxPrince` points.  *Added in `2.2.0`.*
 * `gameBlacklist` {`Array<String/RegExp>`} - add names of games to this array if you don't want to auto-enter specific games (e.g. DLCs IndieGala doesn't recognized as owned or DLCs of games you don't own)
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not to only auto-enter guaranteed giveaways
 * `userBlacklist` {`Array<String/RegExp>`} - add names of users to this array if you don't want to auto-enter their giveaways
@@ -27,7 +28,7 @@ I don't take any responsibility for damage caused by this software. Use this sof
 
 ## Release Notes
 *2.2.0*
-* Added option `maxPrice`
+* Added options `skipDLCs` and `maxPrice`
 * Add delay before reloading on error
 
 *2.1.2*

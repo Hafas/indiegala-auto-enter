@@ -14,6 +14,7 @@
 // @grant        GM_deleteValue
 // @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // @connect      api.steampowered.com
+// @connect      store.steampowered.com
 // ==/UserScript==
 
 (function () {
@@ -22,6 +23,7 @@
    */
   const options = {
     skipOwnedGames: false,
+    skipDLCs: false,
     //set to 0 to ignore the number of participants
     maxParticipants: 0,
     //set to 0 to ignore the price
@@ -81,6 +83,7 @@
       }
       const giveaways = await getGiveaways();
       setOwned(giveaways);
+      await setGameInfo(giveaways);
       await enterGiveaways(giveaways);
       if (okToContinue()) {
         navigateToNext();
@@ -120,7 +123,8 @@
     return response.text();
   }
   async function getOwnedGames() {
-    if (!options.skipOwnedGames) {
+    const fetchOwnedGames = options.skipOwnedGames || options.skipDLCs === "missing_basegame";
+    if (!fetchOwnedGames) {
       return [];
     }
     const { steamApiKey, steamUserId } = options;
@@ -134,7 +138,7 @@
     }
     const { responseText } = await corsRequest(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${steamApiKey}&steamid=${steamUserId}&format=json`);
     const { games } = JSON.parse(responseText).response;
-    ownedGames = games.map(({ appid }) => String(appid));
+    ownedGames = games.map(({ appid }) => appid);
     await saveToCache("ownedGames", ownedGames, 60);
     return ownedGames;
   }
@@ -144,11 +148,62 @@
    */
   function setOwned (giveaways) {
     giveaways.forEach((giveaway) => {
-      giveaway.owned = my.ownedGames.has(giveaway.steamId);
+      giveaway.owned = my.ownedGames.has(Number(giveaway.steamId));
       if (giveaway.owned) {
         log("I seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
       } else {
         log("I don't seem to own '%s' (gameId: '%s')", giveaway.name, giveaway.gameId);
+      }
+    });
+  }
+
+  async function setGameInfo (giveaways) {
+    const fetchGameInfo = options.skipDLCs;
+    if (!fetchGameInfo) {
+      return;
+    }
+    const appids = Array.from(
+      new Set(
+        giveaways.map(({ steamId }) => steamId)
+      )
+    );
+    const appsDetails = await getFromCache("appsDetails", {});
+    await Promise.all(
+      appids.map(
+        async (appid) => {
+          const details = appsDetails[appid];
+          if (details) {
+            return;
+          }
+          const { responseText } = await corsRequest(`https://store.steampowered.com/api/appdetails?appids=${appid}`);
+          const result = JSON.parse(responseText);
+          if (result === null) {
+            warning("No details found for appid '%s'", appid);
+            return;
+          }
+          if (result[appid].success !== true) {
+            error("Failed to get details for appid '%s'", appid, result);
+            return;
+          }
+          const { fullgame, type } = result[appid].data;
+          const basegame = fullgame ? Number(fullgame.appid) : undefined;
+          appsDetails[appid] = {
+            basegame,
+            type
+          };
+        }
+      )
+    )
+    await saveToCache("appsDetails", appsDetails);
+    giveaways.forEach((giveaway) => {
+      const appid = giveaway.steamId;
+      const details = appsDetails[appid];
+      if (details) {
+        const { basegame, type } = details;
+        giveaway.gameType = type;
+        if (basegame) {
+          giveaway.ownBasegame = my.ownedGames.has(basegame);
+        }
       }
     });
   }
@@ -263,7 +318,8 @@
         name: getGiveawayName(giveawayDOM),
         price: getGiveawayPrice(giveawayDOM),
         minLevel: getGiveawayMinLevel(giveawayDOM),
-        owned: undefined, //will be filled in later in setOwned()
+        //will be filled in later in setOwned()
+        owned: undefined,
         participants: getGiveawayParticipants(giveawayDOM),
         guaranteed: getGiveawayGuaranteed(giveawayDOM),
         by: getGiveawayBy(giveawayDOM),
@@ -271,7 +327,9 @@
         entered: getGiveawayEntered(giveawayDOM),
         steamId: steamId,
         idType: idType,
-        gameId: gameId
+        gameId: gameId,
+        gameType: undefined,
+        ownBasegame: undefined
       });
     });
   }
@@ -342,8 +400,18 @@
         return false;
       }
       if (this.owned && options.skipOwnedGames) {
-        log("Not entering '%s' because I already own it (skipOwnedGames? %s)", this.name, !!options.skipOwnedGames);
+        log("Not entering '%s' because I already own it (skipOwnedGames? %s)", this.name, options.skipOwnedGames);
         return false;
+      }
+      if (this.gameType === "dlc") {
+        if (!this.ownBasegame && options.skipDLCs === "missing_basegame") {
+          log("Not entering '%s' because I don't own the basegame of this DLC (skipDLCs? %s)", this.name, options.skipDLCs);
+          return false;
+        }
+        if (options.skipDLCs) {
+          log("Not entering '%s' because the game is a DLC (skipDLCs? %s)", this.name, options.skipDLCs);
+          return false;
+        }
       }
       if (isInGameBlacklist(this.name)) {
         log("Not entering '%s' because this game is on my blacklist", this.name);
@@ -354,7 +422,7 @@
         return false;
       }
       if (!this.guaranteed && options.onlyEnterGuaranteed) {
-        log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, !!options.onlyEnteredGuaranteed);
+        log("Not entering '%s' because the key is not guaranteed to work (onlyEnterGuaranteed? %s)", this.name, options.onlyEnteredGuaranteed);
         return false;
       }
       if (options.maxParticipants && this.participants > options.maxParticipants) {
@@ -366,7 +434,7 @@
         return false;
       }
       if (this.idType === IdType.SUB && options.skipSubGiveaways) {
-        log("Not entering '%s' because this giveaway is linked to a sub (skipSubGiveaways? %s)", this.name, !!options.skipSubGiveaways);
+        log("Not entering '%s' because this giveaway is linked to a sub (skipSubGiveaways? %s)", this.name, options.skipSubGiveaways);
         return false;
       }
       if (this.minLevel > my.level) {
@@ -547,7 +615,7 @@
     }
     try {
       const { expires, value } = JSON.parse(rawValue);
-      if (new Date().getTime() > new Date(expires).getTime()) {
+      if (expires && new Date().getTime() > new Date(expires).getTime()) {
         //value has expired
         await GM.deleteValue(key);
         return GM.getValue(key, defaultValue);
@@ -562,8 +630,10 @@
   }
 
   async function saveToCache (key, value, duration) {
+    // if duration is not set then the resource does not expire
+    const expires = duration ? new Date(new Date().getTime() + duration * 60 * 1000) : null
     const object = {
-      expires: new Date(new Date().getTime() + duration * 60 * 1000),
+      expires,
       value
     };
     await GM.setValue(key, JSON.stringify(object));
