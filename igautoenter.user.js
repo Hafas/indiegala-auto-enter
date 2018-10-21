@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.2.1
+// @version      2.2.2
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -403,12 +403,13 @@
         log("Not entering '%s' because I already own it (skipOwnedGames? %s)", this.name, options.skipOwnedGames);
         return false;
       }
-      if (this.gameType === "dlc") {
-        if (!this.ownBasegame && options.skipDLCs === "missing_basegame") {
-          log("Not entering '%s' because I don't own the basegame of this DLC (skipDLCs? %s)", this.name, options.skipDLCs);
-          return false;
-        }
-        if (options.skipDLCs) {
+      if (this.gameType === "dlc" && options.skipDLCs) {
+        if (options.skipDLCs === "missing_basegame") {
+          if (!this.ownBasegame) {
+            log("Not entering '%s' because I don't own the basegame of this DLC (skipDLCs? %s)", this.name, options.skipDLCs);
+            return false;
+          }
+        } else {
           log("Not entering '%s' because the game is a DLC (skipDLCs? %s)", this.name, options.skipDLCs);
           return false;
         }

@@ -1,4 +1,7 @@
 ## Release Notes
+*2.2.2*
+* FIX: Option `"missing_basegame"` didn't work properly
+
 *2.2.1*
 * Possible fix for stuck navigation
 
