@@ -17,6 +17,7 @@ Edit the script to change the `options`-Object
 * `interceptAlert` {`Boolean`} - whether or not to intercept (and ignore) alerts. *Added in `1.1.4`.*
 * `waitOnEnd` {`Number`} - when reaching the last giveaway page the script will wait `waitOnEnd` minutes before it will navigate to the first page and resume its work. *Added in `1.1.4`.*
 * `timeout` {`Number`} - when making a request to IndieGala the script will wait `timeout` seconds before it will retry. *Added in `1.1.4`.*
+* `delay` {`Number`} - define how many seconds the script will wait between entering giveaways. *Added in `2.3.0`.*
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
 * `steamApiKey` {`String`} - your personal Steam API key. You can generate one here: https://steamcommunity.com/dev/apikey. Don't share the key with anyone. *Added in `2.1.0`.*
 * `steamUserId` {`String`} - your Steam Id 64. You can see determine yours by using this tool: https://profile.tf *Added in `2.1.0`.*

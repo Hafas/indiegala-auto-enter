@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.2.2
+// @version      2.3.0
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -28,10 +28,10 @@
     maxParticipants: 0,
     //set to 0 to ignore the price
     maxPrice: 0,
-    //Array of names of games
+    //Array of names of games: ["game1","game2","game3"]
     gameBlacklist: [],
     onlyEnterGuaranteed: false,
-    //Array of names of users
+    //Array of names of users: ["user1","user2","user3"]
     userBlacklist: [],
     //Some giveaways don't link to the game directly but to a sub containing that game. IndieGala is displaying these games as "not owned" even if you own that game
     skipSubGiveaways: false,
@@ -40,16 +40,19 @@
     waitOnEnd: 60,
     //how many seconds to wait for a respond by IndieGala
     timeout: 30,
+    //how many seconds to wait between entering giveaways
+    delay: 1,
     //Display logs
     debug: false,
-    //Your Steam API key (keep it private!)
+    //Your Steam API key (keep it private!): "A1B2C3D4E5F6H7I8J9K10L11M12N13O1"
     steamApiKey: null,
-    //Your Steam user id
+    //Your Steam user id: "12345678901234567"
     steamUserId: null
   };
 
   const waitOnEnd = options.waitOnEnd * 60 * 1000;
   const timeout = options.timeout * 1000;
+  const delay = options.delay * 1000;
 
   /**
    * current user state
@@ -263,6 +266,8 @@
           }
         }
       }
+      log("waiting some msec:", delay);
+      await wait(delay);
     }
   }
 
