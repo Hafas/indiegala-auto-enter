@@ -28,7 +28,7 @@
     maxParticipants: 0,
     //set to 0 to ignore the price
     maxPrice: 0,
-    //Array of names of games: ["appid1","appid2","appid3"]
+    //Array of names of games: ["game1","game2","game3"]
     gameBlacklist: [],
     onlyEnterGuaranteed: false,
     //Array of names of users: ["user1","user2","user3"]
@@ -41,7 +41,7 @@
     //how many seconds to wait for a respond by IndieGala
     timeout: 30,
     //how many seconds to wait between entering giveaways
-    delay: 30,
+    delay: 1,
     //Display logs
     debug: false,
     //Your Steam API key (keep it private!): "A1B2C3D4E5F6H7I8J9K10L11M12N13O1"
