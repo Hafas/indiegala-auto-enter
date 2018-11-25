@@ -24,30 +24,32 @@
   const options = {
     skipOwnedGames: false,
     skipDLCs: false,
-    //set to 0 to ignore the number of participants
+    // set to 0 to ignore the number of participants
     maxParticipants: 0,
-    //set to 0 to ignore the price
+    // set to 0 to ignore the price
     maxPrice: 0,
-    //Array of names of games: ["game1","game2","game3"]
+    // Array of names of games: ["game1","game2","game3"]
     gameBlacklist: [],
     onlyEnterGuaranteed: false,
-    //Array of names of users: ["user1","user2","user3"]
+    // Array of names of users: ["user1","user2","user3"]
     userBlacklist: [],
-    //Some giveaways don't link to the game directly but to a sub containing that game. IndieGala is displaying these games as "not owned" even if you own that game
+    // Some giveaways don't link to the game directly but to a sub containing that game. IndieGala is displaying these games as "not owned" even if you own that game
     skipSubGiveaways: false,
     interceptAlert: false,
-    //how many minutes to wait at the end of the line until restarting from the beginning
+    // how many minutes to wait at the end of the line until restarting from the beginning
     waitOnEnd: 60,
-    //how many seconds to wait for a respond by IndieGala
+    // how many seconds to wait for a respond by IndieGala
     timeout: 30,
-    //how many seconds to wait between entering giveaways
+    // how many seconds to wait between entering giveaways
     delay: 1,
-    //Display logs
+    // Display logs
     debug: false,
-    //Your Steam API key (keep it private!): "A1B2C3D4E5F6H7I8J9K10L11M12N13O1"
+    // Your Steam API key (keep it private!): "A1B2C3D4E5F6H7I8J9K10L11M12N13O1"
     steamApiKey: null,
-    //Your Steam user id: "12345678901234567"
-    steamUserId: null
+    // Your Steam user id: "12345678901234567"
+    steamUserId: null,
+    // how many tickets to buy in extra odds giveaways
+    extraTickets: 1
   };
 
   const waitOnEnd = options.waitOnEnd * 60 * 1000;
@@ -238,23 +240,27 @@
       if (!giveaway.shouldEnter()) {
         continue;
       }
-      const payload = await giveaway.enter();
-      log("giveaway entered", "payload", payload);
-      if (payload.status === "ok") {
-        my.coins = payload.new_amount;
-      } else {
-        error("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
-        if (payload.status === "insufficient_credit") {
-          //we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
-          if (isNaN(my.coins)) {
-            my.coins = giveaway.price - 1;
-          } else {
-            my.coins = Math.min(my.coins, giveaway.price - 1);
+      const numberOfEntries = giveaway.extraOdds ? options.extraTickets - giveaway.boughtTickets : 1;
+      for (let i = 0; i < numberOfEntries; ++i) {
+        const payload = await giveaway.enter();
+        log("giveaway entered", "payload", payload);
+        if (payload.status === "ok") {
+          my.coins = payload.new_amount;
+          giveaway.boughtTickets += 1;
+        } else {
+          error("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
+          if (payload.status === "insufficient_credit") {
+            //we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
+            if (isNaN(my.coins)) {
+              my.coins = giveaway.price - 1;
+            } else {
+              my.coins = Math.min(my.coins, giveaway.price - 1);
+            }
           }
         }
+        log("waiting some msec:", delay);
+        await wait(delay);
       }
-      log("waiting some msec:", delay);
-      await wait(delay);
     }
   }
 
@@ -311,8 +317,8 @@
         participants: getGiveawayParticipants(giveawayDOM),
         guaranteed: getGiveawayGuaranteed(giveawayDOM),
         by: getGiveawayBy(giveawayDOM),
-        // TODO instead of 'entered' there should be something like 'boughtTickets' to consider these extra odds giveaways
-        entered: getGiveawayEntered(giveawayDOM),
+        boughtTickets: getGiveawayBoughtTickets(giveawayDOM),
+        extraOdds: getGiveawayExtraOdds(giveawayDOM),
         steamId: steamId,
         idType: idType,
         gameId: gameId,
@@ -338,7 +344,20 @@
   const getGiveawayParticipants = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("tickets-sold")[0].textContent));
   const getGiveawayGuaranteed = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("price-type-cont")[0].classList.contains("palette-background-11"));
   const getGiveawayBy = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("steamnick")[0].getElementsByTagName("a")[0].textContent);
-  const getGiveawayEntered = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByTagName("aside").length === 0);
+  const getGiveawayBoughtTickets = withFailSafe((giveawayDOM) => {
+    if (giveawayDOM.getElementsByTagName("aside").length === 0) {
+      // entered single ticket giveaway
+      return 1;
+    }
+    const extraOddsElement = giveawayDOM.querySelector("aside.extra-odds palette-color-11");
+    if (!extraOddsElement) {
+      // not entered single ticket giveaway
+      return 0;
+    }
+    // extra odds giveaway
+    return parseInt(extraOddsElement.textContent);
+  });
+  const getGiveawayExtraOdds = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("fa-clone").length !== 0);
 
   /**
    * utility function that checks if a name is in a blacklist
@@ -383,8 +402,12 @@
      * returns true if the script can and should enter a giveaway
      */
     shouldEnter () {
-      if (this.entered) {
+      if (this.boughtTickets && !this.extraOdds) {
         log("Not entering '%s' because I already entered", this.name);
+        return false;
+      }
+      if (this.extraOdds && this.boughtTickets >= options.extraTickets) {
+        log("Not entering '%s' because I already entered %s times (extraTickets: %s)", this.name, this.boughtTickets, options.extraTickets);
         return false;
       }
       if (this.owned && options.skipOwnedGames) {

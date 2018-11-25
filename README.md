@@ -21,6 +21,7 @@ Edit the script to change the `options`-Object
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
 * `steamApiKey` {`String`} - your personal Steam API key. You can generate one here: https://steamcommunity.com/dev/apikey. Don't share the key with anyone. *Added in `2.1.0`.*
 * `steamUserId` {`String`} - your Steam Id 64. You can see determine yours by using this tool: https://profile.tf *Added in `2.1.0`.*
+* `extraTickets` {`Integer`} - how many tickets to buy in extra odds giveaways. Set to `0` to not enter extra odds giveaways at all. *Added in `2.4.0`.*
 
 If there is an update, backup the options first. It will be overwritten otherwise.
 
