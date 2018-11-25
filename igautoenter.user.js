@@ -60,7 +60,7 @@
   const my = {
     level: undefined,
     coins: undefined,
-    nextRecharge: 20 * 60 * 1000,
+    nextRecharge: 60 * 60 * 1000,
     ownedGames: new Set()
   };
 
