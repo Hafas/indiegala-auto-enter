@@ -124,7 +124,7 @@
       error("Expected to have 3 rows of user information.", elements);
     }
     const level = parseInt(elements[0] && elements[0].textContent);
-    const coins = parseInt(elements[2] && elements[1].textContent);
+    const coins = parseInt(elements[2] && elements[2].textContent);
     if (isNaN(level)) {
       error("unable to determine level");
       my.level = 0;
