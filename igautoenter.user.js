@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.3.0
+// @version      2.4.0
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -60,7 +60,7 @@
   const my = {
     level: undefined,
     coins: undefined,
-    nextRecharge: undefined,
+    nextRecharge: 20 * 60 * 1000,
     ownedGames: new Set()
   };
 
@@ -75,9 +75,11 @@
     }
     try {
       startWatchdog();
-      const [level, userData, ownedGames] = await Promise.all([getLevel(), getUserData(), getOwnedGames()]);
-      setLevel(level);
-      setData(userData);
+      const [, ownedGames] = await Promise.all([
+        waitForChange(() => document.querySelectorAll(".account-row.account-galamoney").length > 0),
+        getOwnedGames()
+      ]);
+      setUserData(document.querySelectorAll(".account-row.account-galamoney"));
       setOwnedGames(ownedGames);
       log("myData:", my);
       if (!okToContinue()) {
@@ -117,14 +119,26 @@
   /**
    * collects user information including level, coins and next recharge
    */
-  async function getLevel () {
-    const response = await request("/giveaways/get_user_level_and_coins");
-    return response.json();
+  function setUserData (elements) {
+    if (elements.length !== 3) {
+      error("Expected to have 3 rows of user information.", elements);
+    }
+    const level = parseInt(elements[0] && elements[0].textContent);
+    const coins = parseInt(elements[2] && elements[1].textContent);
+    if (isNaN(level)) {
+      error("unable to determine level");
+      my.level = 0;
+    } else {
+      my.level = level;
+    }
+    if (isNaN(coins)) {
+      error("unable to determine #coins");
+      my.coins = 240;
+    } else {
+      my.coins = coins;
+    }
   }
-  async function getUserData() {
-    const response = await request("/profile");
-    return response.text();
-  }
+
   async function getOwnedGames() {
     const fetchOwnedGames = options.skipOwnedGames || options.skipDLCs === "missing_basegame";
     if (!fetchOwnedGames) {
@@ -211,33 +225,6 @@
     });
   }
 
-  /**
-   * puts the result of getUserData into the my-Object
-   */
-  function setLevel (data) {
-    log("setLevel", "data", data);
-    my.level = parseInt(data.current_level) || 0;
-  }
-  function setData (data) {
-    try {
-      const doc = document.implementation.createHTMLDocument("profile");
-      doc.documentElement.innerHTML = data;
-      my.nextRecharge = (parseInt(doc.getElementById("next-recharge-mins").textContent) + 1) * 60 * 1000;
-      if (isNaN(my.nextRecharge)) {
-        error("could not determine next recharge. Setting default value");
-        my.nextRecharge = 20 * 60 * 1000;
-      }
-      my.coins = parseInt(doc.getElementsByClassName("galasilver-profile")[0].textContent);
-      if (isNaN(my.coins)) {
-        error("could not determine number of coins. Setting default value");
-        my.coins = 240;
-      }
-    } catch (e) {
-      warn("Failed to parse profile page. Account might be locked?", e);
-      my.nextRecharge = my.nextRecharge || 20 * 60 * 1000;
-      my.coins = my.coins || 240;
-    }
-  }
   function setOwnedGames (data) {
     my.ownedGames = new Set(data);
   }
@@ -275,11 +262,7 @@
    * parses and returns giveaways whenever the DOM is ready
    */
   async function getGiveaways () {
-    while (!document.querySelector("#ajax-giv-list-cont .giv-list-cont")) {
-      //content isn't there yet, so we wait until it is
-      log("waiting for content to come ...");
-      await wait(300);
-    }
+    await waitForChange(() => document.querySelector("#ajax-giv-list-cont .giv-list-cont"));
     return parseGiveaways();
   }
 
@@ -599,14 +582,21 @@
   }
 
   async function startWatchdog () {
-		while (true) {
-      // keep watch for the warning cover - if it becomes visible reload the page
-      if (document.querySelector(".warning-cover").offsetParent) {
-        await wait(5000);
-        reload();
-        break;
+    await waitForChange(document.querySelector(".warning-cover").offsetParent, 1000);
+    await wait(5000);
+    reload();
+  }
+
+  async function waitForChange (condition, timeout = 300) {
+    while (true) {
+      const result = (
+        (typeof condition === "function" && condition())
+        || (typeof condition !== "function" && condition)
+      );
+      if (result) {
+        return result;
       }
-      await wait(1000);
+      await wait(timeout);
     }
   }
 

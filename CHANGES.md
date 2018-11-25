@@ -1,4 +1,8 @@
 ## Release Notes
+*2.4.0*
+* Retrieve `my.coins` and `my.level` through the sidebar (instead of making additional ajax requests)
+* `my.nextRecharge` is fixed at 20 minutes
+
 *2.3.0*
 * Added option `delay`
 
