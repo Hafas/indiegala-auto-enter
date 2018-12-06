@@ -349,7 +349,7 @@
       // entered single ticket giveaway
       return 1;
     }
-    const extraOddsElement = giveawayDOM.querySelector("aside.extra-odds palette-color-11");
+    const extraOddsElement = giveawayDOM.querySelector("aside.extra-odds .palette-color-11");
     if (!extraOddsElement) {
       // not entered single ticket giveaway
       return 0;
