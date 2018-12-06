@@ -605,17 +605,14 @@
   }
 
   async function startWatchdog () {
-    await waitForChange(document.querySelector(".warning-cover").offsetParent, 1000);
+    await waitForChange(() => document.querySelector(".warning-cover").offsetParent, 1000);
     await wait(5000);
     reload();
   }
 
   async function waitForChange (condition, timeout = 300) {
     while (true) {
-      const result = (
-        (typeof condition === "function" && condition())
-        || (typeof condition !== "function" && condition)
-      );
+      const result = condition();
       if (result) {
         return result;
       }
