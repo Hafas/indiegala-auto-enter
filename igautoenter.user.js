@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.4.1
+// @version      2.4.2
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -77,11 +77,11 @@
     }
     try {
       startWatchdog();
-      const [, ownedGames] = await Promise.all([
-        waitForChange(() => document.querySelectorAll(".account-row.account-galamoney").length > 0),
+      const [userData, ownedGames] = await Promise.all([
+        getUserData(),
         getOwnedGames()
       ]);
-      setUserData(document.querySelectorAll(".account-row.account-galamoney"));
+      setUserData(userData);
       setOwnedGames(ownedGames);
       log("myData:", my);
       if (!okToContinue()) {
@@ -117,16 +117,21 @@
     }
     return true;
   }
+  
+  async function getUserData () {
+    const response = await request("/get_user_info?show_coins=True");
+    return response.json();
+  }
 
   /**
    * collects user information including level, coins and next recharge
    */
-  function setUserData (elements) {
-    if (elements.length !== 3) {
-      error("Expected to have 3 rows of user information.", elements);
+  function setUserData (json) {
+    if (!json) {
+      error("No user data found!");
+      return;
     }
-    const level = parseInt(elements[0] && elements[0].textContent);
-    const coins = parseInt(elements[2] && elements[2].textContent);
+    const { giveaways_user_lever: level, silver_coins_tot: coins } = json;
     if (isNaN(level)) {
       error("unable to determine level");
       my.level = 0;

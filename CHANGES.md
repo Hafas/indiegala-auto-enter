@@ -1,4 +1,7 @@
 ## Release Notes
+*2.4.2*
+* Fix: Response to layout changes
+
 *2.4.1*
 * Fix: Option `extraTickets` didn't work as expected
 
