@@ -1,4 +1,7 @@
 ## Release Notes
+*2.4.3*
+* Fix: Continue if user data request fails
+
 *2.4.2*
 * Fix: Response to layout changes
 
