@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.4.2
+// @version      2.4.3
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -78,8 +78,8 @@
     try {
       startWatchdog();
       const [userData, ownedGames] = await Promise.all([
-        getUserData(),
-        getOwnedGames()
+        withFailSafeAsync(getUserData)(),
+        withFailSafeAsync(getOwnedGames)()
       ]);
       setUserData(userData);
       setOwnedGames(ownedGames);
@@ -119,7 +119,9 @@
   }
   
   async function getUserData () {
-    const response = await request("/get_user_info?show_coins=True");
+    const response = await request("/get_user_info?show_coins=True", { 
+      maxRetries: 0
+    });
     return response.json();
   }
 
@@ -336,6 +338,15 @@
   const withFailSafe = (fn) => (...args) => {
     try {
       return fn(...args);
+    } catch (err) {
+      error(...args, err);
+      return undefined;
+    }
+  }
+
+  const withFailSafeAsync = (fn) => async (...args) => {
+    try {
+      return await fn(...args);
     } catch (err) {
       error(...args, err);
       return undefined;
@@ -563,10 +574,16 @@
   /**
    * sends an HTTP-Request
    */
-  async function request (resource, _options) {
+  async function request (resource, _options =  {}, retryCounter = 0) {
+    const { maxRetries = 2, ...otherOptions } = _options;
+    if (retryCounter > maxRetries) {
+      // retry 2 times at most
+      throw new Error(`request to ${resource} failed too often`);
+    }
+    
     const options = Object.assign({
       credentials: "include"
-    }, _options);
+    }, otherOptions);
     try {
       const response = await fetch(document.location.origin + resource, options);
       if (response.ok) {
@@ -575,11 +592,11 @@
       const timeoutDelay = response.status === 403 ? 60 * 1000 : 10 * 1000;
       await wait(timeoutDelay);
       // retry
-      return request(resource, _options);
+      return request(resource, _options, retryCounter + 1);
     } catch (err) {
       await wait(1000);
       // retry
-      return request(resource, _options);
+      return request(resource, _options, retryCounter + 1);
     }
   }
 
