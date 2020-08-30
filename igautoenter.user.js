@@ -65,6 +65,11 @@
     nextRecharge: 60 * 60 * 1000,
     ownedGames: new Set()
   };
+  
+  const state = {
+    currentPage: 1,
+    currentDocument: document
+  };
 
   /**
    * entry point of the script
@@ -76,25 +81,27 @@
       return;
     }
     try {
-      startWatchdog();
       const [userData, ownedGames] = await Promise.all([
         withFailSafeAsync(getUserData)(),
         withFailSafeAsync(getOwnedGames)()
       ]);
       setUserData(userData);
       setOwnedGames(ownedGames);
-      log("myData:", my);
-      if (!okToContinue()) {
-        // will navigate to first page on next recharge
-        return;
+      await waitForGiveaways();
+      while (okToContinue()) {
+        log("currentPage: %s, myData:", state.currentPage, my);
+        const giveaways = parseGiveaways();
+        setOwned(giveaways);
+        await setGameInfo(giveaways);
+        await enterGiveaways(giveaways);
+        if (okToContinue() && hasNext()) {
+          await loadNextPage();
+        } else {
+          break;
+        }
       }
-      const giveaways = await getGiveaways();
-      setOwned(giveaways);
-      await setGameInfo(giveaways);
-      await enterGiveaways(giveaways);
-      if (okToContinue()) {
-        navigateToNext();
-      }
+      info("Nothing to do. Waiting %s minutes", waitOnEnd);
+      setTimeout(reload, waitOnEnd);
     } catch (err) {
       error("Something went wrong:", err);
     }
@@ -111,8 +118,7 @@
    */
   function okToContinue () {
     if (my.coins === 0) {
-      info("No coins available. Waiting for recharge. Expected recharge at", new Date(new Date().getTime() + my.nextRecharge));
-      setTimeout(navigateToStart, my.nextRecharge);
+      info("No coins available");
       return false;
     }
     return true;
@@ -204,7 +210,7 @@
           const { responseText } = await corsRequest(`https://store.steampowered.com/api/appdetails?appids=${appid}`);
           const result = JSON.parse(responseText);
           if (result === null) {
-            warning("No details found for appid '%s'", appid);
+            warn("No details found for appid '%s'", appid);
             return;
           }
           if (result[appid].success !== true) {
@@ -252,10 +258,10 @@
         const payload = await giveaway.enter();
         log("giveaway entered", "payload", payload);
         if (payload.status === "ok") {
-          my.coins = payload.new_amount;
+          my.coins = payload.silver_tot;
           giveaway.boughtTickets += 1;
         } else {
-          error("Failed to enter giveaway. Status: %s. My: %o", payload.status, my);
+          error("Failed to enter giveaway. Status: %s. Code: %s, My: %o", payload.status, payload.code, my);
           if (payload.status === "insufficient_credit") {
             //we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
             if (isNaN(my.coins)) {
@@ -272,16 +278,14 @@
   }
 
   /**
-   * parses and returns giveaways whenever the DOM is ready
+   * 
    */
-  async function getGiveaways () {
-    await waitForChange(() => document.querySelector("#ajax-giv-list-cont .giv-list-cont"));
-    return parseGiveaways();
+  async function waitForGiveaways () {
+    log("waiting giveaways to appear");
+    await waitForChange(() => document.querySelector(".page-contents-list .items-list-row"));
+    log("giveaways are here. Continue ...");
   }
 
-  const APP_ID_PATTERN = /^([0-9]+)(?:_(?:bonus|promo|ig))?$/;
-  const SUB_ID_PATTERN = /^sub_([0-9]+)$/;
-  const FALLBACK_ID_PATTERN = /([0-9]+)/;
   /**
    * parses the DOM and extracts the giveaway. Returns Giveaway-Objects, which include the following properties:
    id {String} - the giveaway id
@@ -297,21 +301,25 @@
    gameId {String} - the gameId IndieGala gave this game. It's usually the appId with or without a suffix, or the subId with a "sub_"-prefix
    */
   function parseGiveaways () {
-    return Array.from(document.getElementsByClassName("tickets-col")).map((giveawayDOM) => {
-      const gameId = giveawayDOM.getElementsByClassName("giveaway-game-id")[0].attributes.value.value;
-      let match;
-      let steamId = null;
-      let idType = null;
-      if (match = APP_ID_PATTERN.exec(gameId)) {
-        steamId = match[1];
-        idType = IdType.APP;
-      } else if (match = SUB_ID_PATTERN.exec(gameId)) {
-        steamId = match[1];
-        idType = IdType.SUB;
-      } else {
-        error("Unrecognized id type in '%s'", gameId);
-        if (match = FALLBACK_ID_PATTERN.exec(gameId)) {
-          steamId = match[1];
+    return Array.from(state.currentDocument.querySelectorAll(".page-contents-list .items-list-row .items-list-col")).map((giveawayDOM) => {
+      // we can extract the game id from the image
+      const imageURL = giveawayDOM.getElementsByTagName("img")[0].dataset.imgSrc;
+      const [, , typeString, steamId] = new URL(imageURL).pathname.split("/");
+      const gameId = steamId;
+      let idType;
+      switch (typeString) {
+        case "apps": {
+          idType = IdType.APP;
+          break;
+        }
+        case "bundles":
+        case "subs": {
+          idType = IdType.SUB;
+          break;
+        }
+        default: {
+          error("Unrecognized id type in '%s'", imageURL);
+          idType = null;
         }
       }
       return new Giveaway({
@@ -353,15 +361,26 @@
     }
   }
 
-  const getGiveawayId = withFailSafe((giveawayDOM) => giveawayDOM.querySelector("[rel]").attributes.rel.value);
-  const getGiveawayName = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByTagName("a")[0].attributes.title.value);
-  const getGiveawayPrice = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("ticket-price")[0].textContent));
-  const getGiveawayMinLevel = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("type-level")[0].textContent));
-  const getGiveawayParticipants = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("tickets-sold")[0].textContent));
-  const getGiveawayGuaranteed = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("price-type-cont")[0].classList.contains("palette-background-11"));
-  const getGiveawayBy = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("steamnick")[0].getElementsByTagName("a")[0].textContent);
+  const getGiveawayId = withFailSafe((giveawayDOM) => {
+    const linkToGiveaway = giveawayDOM.getElementsByTagName("a")[0].attributes.href.value;
+    return linkToGiveaway.split("/").slice(-1)[0];
+  });
+  const getGiveawayName = withFailSafe((giveawayDOM) => giveawayDOM.querySelector("a[title]").attributes.title.value);
+  const getGiveawayPrice = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.querySelector("[data-price]")?.dataset.price));
+  const getGiveawayMinLevel = withFailSafe((giveawayDOM) => {
+    const levelElement = giveawayDOM.querySelector(".items-list-item-type span");
+    if (!levelElement) {
+      return 0;
+    }
+    // the text is something like "Lev. 1". Just extract the number.
+    return parseInt(levelElement.textContent.match(/[0-9]+/)[0]);
+  });
+  const getGiveawayParticipants = withFailSafe((giveawayDOM) => parseInt(giveawayDOM.getElementsByClassName("items-list-item-data-right-bottom")[0]?.textContent));
+  const getGiveawayGuaranteed = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("items-list-item-type")[0].classList.contains("items-list-item-type-guaranteed"));
+  // the page does not show who made the giveaway anymore
+  const getGiveawayBy = withFailSafe((/*giveawayDOM*/) => "");
   const getGiveawayBoughtTickets = withFailSafe((giveawayDOM) => {
-    if (giveawayDOM.getElementsByTagName("aside").length === 0) {
+    if (giveawayDOM.getElementsByClassName("items-list-item-ticket").length === 0) {
       // entered single ticket giveaway
       return 1;
     }
@@ -481,44 +500,30 @@
      */
     async enter () {
       info("Entering giveaway", this);
-      const response = await request("/giveaways/new_entry", {
+      const response = await request("/giveaways/join", {
         method: "POST",
-        body: JSON.stringify({giv_id: this.id, ticket_price: this.price})
+        body: JSON.stringify({ id: this.id }),
+        headers: {
+          "X-Requested-With": "XMLHttpRequest"
+        }
       });
       return response.json();
     }
   }
-
+  
   /**
-   * navigate to the first giveaway page
+   * load the DOM of the next page, parse it, and place it in `state.currentDocument` for further processing
    */
-  function navigateToStart () {
-    navigateToPage(1);
-  }
-
-  /**
-   * navigates to the next giveaway page; navigates to the first page if there is no next page
-   */
-  function navigateToNext () {
-    if (hasNext()) {
-      navigateToPage(getCurrentPage() + 1);
-    } else {
-      info("Reached the end of the line. Waiting %s minutes", options.waitOnEnd);
-      setTimeout(navigateToStart, waitOnEnd);
+  async function loadNextPage () {
+    info("loading next page");
+    const nextPage = state.currentPage + 1;
+    const target = `/giveaways/ajax/${nextPage}/expiry/asc/level/${my.level === 0 ? "0" : "all"}`;
+    const response = await request(target);
+    const json = await response.json();
+    if (json.status === "ok") {
+      state.currentPage = json.current_page;
+      state.currentDocument = new DOMParser().parseFromString(json.html, "text/html");
     }
-  }
-
-  /**
-   * navigates to {pageNumber}th giveaway page
-   */
-  function navigateToPage (pageNumber) {
-    var target = "/giveaways/" + pageNumber + "/expiry/asc/level/" + (my.level === 0 ? "0" : "all");
-    log("navigating to", target);
-    window.location.href = target;
-    setTimeout(function () {
-      log("Navigation seems stuck. Retrying ...");
-      navigateToPage(pageNumber);
-    }, timeout);
   }
 
   /**
@@ -556,13 +561,8 @@
    */
   function hasNext () {
     //find the red links and see if one of them is "NEXT"
-    const links = document.querySelectorAll("a.prev-next.palette-background-1");
-    for (let link of links) {
-      if (link.textContent.includes("NEXT")) {
-        return true;
-      }
-    }
-    return false;
+    const nextLink = state.currentDocument.querySelector(".page-link-cont .fa-angle-right");
+    return Boolean(nextLink);
   }
 
   if (options.interceptAlert) {
@@ -577,7 +577,7 @@
   async function request (resource, _options =  {}, retryCounter = 0) {
     const { maxRetries = 2, ...otherOptions } = _options;
     if (retryCounter > maxRetries) {
-      // retry 2 times at most
+      // retry 3 times at most
       throw new Error(`request to ${resource} failed too often`);
     }
     
@@ -624,12 +624,6 @@
   function reload () {
     log("reloading page");
     window.location.reload();
-  }
-
-  async function startWatchdog () {
-    await waitForChange(() => document.querySelector(".warning-cover").offsetParent, 1000);
-    await wait(5000);
-    reload();
   }
 
   async function waitForChange (condition, timeout = 300) {
