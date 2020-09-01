@@ -280,6 +280,8 @@
             // level hasn't been set properly on initialization - now we can set a guessed value
             if (isNaN(my.level)) {
               my.level = giveaway.minLevel - 1;
+            } else {
+              my.level = Math.min(my.level, giveaway.minLevel - 1);
             }
             break;
           }
