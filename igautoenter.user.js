@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.4.3
+// @version      2.4.6
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -604,7 +604,8 @@
     return new Promise((resolve, reject) => {
       GM.xmlHttpRequest(Object.assign({
         method: "GET",
-        url: resource
+        url: resource,
+        anonymous: true
       }, options, {
         onerror (response) {
           error("corsRequest failed", response);

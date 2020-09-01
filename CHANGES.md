@@ -1,4 +1,7 @@
 ## Release Notes
+*2.4.6*
+* Don't send cookies to the Steam API (Family View interferes otherwise)
+
 *2.4.4*
 * Fix: Response to layout changes
 
