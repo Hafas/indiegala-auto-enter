@@ -504,7 +504,7 @@
         log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
         return false;
       }
-      if (this.minLevel < options.level) {
+      if (this.minLevel < options.minLevel) {
         log("Not entering '%s' because level is too low (level: %s, min: %s", this.name, this.minLevel, options.minLevel);
         return false;
       }
