@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.4.7
+// @version      2.5.0
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -28,6 +28,8 @@
     maxParticipants: 0,
     // set to 0 to ignore the price
     maxPrice: 0,
+    // minimum giveaway level
+    minLevel: 0,
     // Array of names of games: ["game1","game2","game3"]
     gameBlacklist: [],
     onlyEnterGuaranteed: false,
@@ -137,12 +139,14 @@
   function setUserData (json) {
     if (!json) {
       error("No user data found!");
+      my.level = options.minLevel;
+      my.coins = 240;
       return;
     }
     const { giveaways_user_lever: level, silver_coins_tot: coins } = json;
     if (isNaN(level)) {
       error("unable to determine level");
-      my.level = 0;
+      my.level = options.minLevel;
     } else {
       my.level = level;
     }
@@ -498,6 +502,10 @@
       }
       if (this.minLevel > my.level) {
         log("Not entering '%s' because my level is insufficient (mine: %s, needed: %s)", this.name, my.level, this.minLevel);
+        return false;
+      }
+      if (this.minLevel < options.level) {
+        log("Not entering '%s' because level is too low (level: %s, min: %s", this.name, this.minLevel, options.minLevel);
         return false;
       }
       if (this.price > my.coins) {

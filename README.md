@@ -10,6 +10,7 @@ Edit the script to change the `options`-Object
 * `skipDLCs` {`Boolean/String`} - whether or not to skip giveaways of DLCs. You can also set it to `"missing_basegame"` to only skip DLCs of which you don't own the basegame. This option `"missing_basegame"` however requires you to set `steamApiKey` and `steamUserId`. *Added in `2.2.0`.*
 * `maxParticipants` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that already have at least `maxParticipants` participants
 * `maxPrice` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that are more expensive than `maxPrince` points.  *Added in `2.2.0`.*
+* `minLevel` {`Integer`} - set it to a value greater than `0` if you don't want to auto-enter giveaways that are below that level. *Added in `2.5.0`.*
 * `gameBlacklist` {`Array<String/RegExp>`} - add names of games to this array if you don't want to auto-enter specific games (e.g. DLCs IndieGala doesn't recognized as owned or DLCs of games you don't own)
 * `onlyEnterGuaranteed` {`Boolean`} - whether or not to only auto-enter guaranteed giveaways
 * `userBlacklist` {`Array<String/RegExp>`} - add names of users to this array if you don't want to auto-enter their giveaways
