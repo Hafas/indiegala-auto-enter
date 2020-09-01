@@ -81,13 +81,13 @@
       return;
     }
     try {
+      await waitForGiveaways();
       const [userData, ownedGames] = await Promise.all([
         withFailSafeAsync(getUserData)(),
         withFailSafeAsync(getOwnedGames)()
       ]);
       setUserData(userData);
       setOwnedGames(ownedGames);
-      await waitForGiveaways();
       while (okToContinue()) {
         log("currentPage: %s, myData:", state.currentPage, my);
         const giveaways = parseGiveaways();
