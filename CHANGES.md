@@ -1,4 +1,8 @@
 ## Release Notes
+*2.4.7*
+* Set `my.level` to a guessed value when trying to enter a giveaway with insufficient level
+* Fix: Set `my.coins` to a guessed value when trying to a giveaway with insufficient coins
+
 *2.4.6*
 * Don't send cookies to the Steam API (Family View interferes otherwise)
 

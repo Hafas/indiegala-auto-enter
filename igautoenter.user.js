@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.4.6
+// @version      2.4.7
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -257,18 +257,30 @@
       for (let i = 0; i < numberOfEntries; ++i) {
         const payload = await giveaway.enter();
         log("giveaway entered", "payload", payload);
-        if (payload.status === "ok") {
-          my.coins = payload.silver_tot;
-          giveaway.boughtTickets += 1;
-        } else {
-          error("Failed to enter giveaway. Status: %s. Code: %s, My: %o", payload.status, payload.code, my);
-          if (payload.status === "insufficient_credit") {
-            //we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
+        switch (payload.status) {
+          case "ok": {
+            my.coins = payload.silver_tot;
+            giveaway.boughtTickets += 1;
+            break;
+          }
+          case "silver": {
+            // we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
             if (isNaN(my.coins)) {
               my.coins = giveaway.price - 1;
             } else {
               my.coins = Math.min(my.coins, giveaway.price - 1);
             }
+            break;
+          }
+          case "level": {
+            // level hasn't been set properly on initialization - now we can set a guessed value
+            if (isNaN(my.level)) {
+              my.level = giveaway.minLevel - 1;
+            }
+            break;
+          }
+          default: {
+            error("Failed to enter giveaway. Status: %s. Code: %s, My: %o", payload.status, payload.code, my);
           }
         }
         log("waiting some msec:", delay);
