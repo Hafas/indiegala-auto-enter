@@ -62,8 +62,8 @@
    * current user state
    */
   const my = {
-    level: undefined,
-    coins: undefined,
+    level: 10,
+    coins: 240,
     nextRecharge: 60 * 60 * 1000,
     ownedGames: new Set()
   };
@@ -139,20 +139,16 @@
   function setUserData (json) {
     if (!json) {
       error("No user data found!");
-      my.level = options.minLevel;
-      my.coins = 240;
       return;
     }
     const { giveaways_user_lever: level, silver_coins_tot: coins } = json;
     if (isNaN(level)) {
       error("unable to determine level");
-      my.level = options.minLevel;
     } else {
       my.level = level;
     }
     if (isNaN(coins)) {
       error("unable to determine #coins");
-      my.coins = 240;
     } else {
       my.coins = coins;
     }
@@ -269,20 +265,12 @@
           }
           case "silver": {
             // we know that our coins value is lower than the price to enter this giveaway, so we can set a guessed value
-            if (isNaN(my.coins)) {
-              my.coins = giveaway.price - 1;
-            } else {
-              my.coins = Math.min(my.coins, giveaway.price - 1);
-            }
+            my.coins = Math.min(my.coins, giveaway.price - 1);
             break;
           }
           case "level": {
             // level hasn't been set properly on initialization - now we can set a guessed value
-            if (isNaN(my.level)) {
-              my.level = giveaway.minLevel - 1;
-            } else {
-              my.level = Math.min(my.level, giveaway.minLevel - 1);
-            }
+            my.level = Math.min(my.level, giveaway.minLevel - 1);
             break;
           }
           default: {
