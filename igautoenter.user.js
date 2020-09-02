@@ -102,7 +102,7 @@
           break;
         }
       }
-      info("Nothing to do. Waiting %s minutes", waitOnEnd);
+      info("Nothing to do. Waiting %s minutes", options.waitOnEnd);
       setTimeout(reload, waitOnEnd);
     } catch (err) {
       error("Something went wrong:", err);
