@@ -17,7 +17,6 @@ Edit the script to change the `options`-Object
 * `skipSubGiveaways` {`Boolean`} - whether or not to auto-enter giveaways that are linked to subs. Those games are usually not recognized correctly as owned. *Added in `1.1.1`.*
 * `interceptAlert` {`Boolean`} - whether or not to intercept (and ignore) alerts. *Added in `1.1.4`.*
 * `waitOnEnd` {`Number`} - when reaching the last giveaway page the script will wait `waitOnEnd` minutes before it will navigate to the first page and resume its work. *Added in `1.1.4`.*
-* `timeout` {`Number`} - when making a request to IndieGala the script will wait `timeout` seconds before it will retry. *Added in `1.1.4`.*
 * `delay` {`Number`} - define how many seconds the script will wait between entering giveaways. *Added in `2.3.0`.*
 * `debug` {`Boolean`} - set to `true` if you want to see log output of this script in the console
 * `steamApiKey` {`String`} - your personal Steam API key. You can generate one here: https://steamcommunity.com/dev/apikey. Don't share the key with anyone. *Added in `2.1.0`.*

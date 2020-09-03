@@ -1,4 +1,8 @@
 ## Release Notes
+*2.6.0*
+* Options are now configurable over GreaseMonkey's menu
+* `my.level` defaults to `10` (instead of `0`) if unable to determine the actual value
+
 *2.5.0*
 * Option `minLevel` added
 * Set `my.level` to a guessed value when trying to enter a giveaway with insufficient level
