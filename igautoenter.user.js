@@ -12,6 +12,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
+// @grant        GM_registerMenuCommand
 // @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js
 // @connect      api.steampowered.com
 // @connect      store.steampowered.com
@@ -20,6 +21,8 @@
 (function () {
   /**
    * change values to customize the script's behaviour
+   * preferably in your script manager to avoid overrides on updates
+   * if they aren't set they will default to the values below
    */
   const options = {
     skipOwnedGames: false,
@@ -40,23 +43,17 @@
     interceptAlert: false,
     // how many minutes to wait at the end of the line until restarting from the beginning
     waitOnEnd: 60,
-    // how many seconds to wait for a respond by IndieGala
-    timeout: 30,
     // how many seconds to wait between entering giveaways
     delay: 1,
     // Display logs
     debug: false,
     // Your Steam API key (keep it private!): "A1B2C3D4E5F6H7I8J9K10L11M12N13O1"
-    steamApiKey: null,
+    steamApiKey: "",
     // Your Steam user id: "12345678901234567"
-    steamUserId: null,
+    steamUserId: "",
     // how many tickets to buy in extra odds giveaways
     extraTickets: 1
   };
-
-  const waitOnEnd = options.waitOnEnd * 60 * 1000;
-  const timeout = options.timeout * 1000;
-  const delay = options.delay * 1000;
 
   /**
    * current user state
@@ -85,7 +82,8 @@
     try {
       const [userData, ownedGames] = await Promise.all([
         withFailSafeAsync(getUserData)(),
-        withFailSafeAsync(getOwnedGames)()
+        withFailSafeAsync(getOwnedGames)(),
+        withFailSafeAsync(getOptionsFromCache)()
       ]);
       setUserData(userData);
       setOwnedGames(ownedGames);
@@ -102,6 +100,7 @@
           break;
         }
       }
+      const waitOnEnd = options.waitOnEnd * 60 * 1000;
       info("Nothing to do. Waiting %s minutes", options.waitOnEnd);
       setTimeout(reload, waitOnEnd);
     } catch (err) {
@@ -277,6 +276,7 @@
             error("Failed to enter giveaway. Status: %s. Code: %s, My: %o", payload.status, payload.code, my);
           }
         }
+        const delay = options.delay * 1000;
         log("waiting some msec:", delay);
         await wait(delay);
       }
@@ -520,7 +520,7 @@
       return response.json();
     }
   }
-  
+
   /**
    * load the DOM of the next page, parse it, and place it in `state.currentDocument` for further processing
    */
@@ -680,6 +680,47 @@
       value
     };
     await GM.setValue(key, JSON.stringify(object));
+  }
+
+ /*
+  * reads values from userscript manager and falls back to the defaults
+  * also adds simple menu entries to set the values through the userscript manager
+  */
+  async function getOptionsFromCache () {
+    const optionNames = Object.keys(options);
+    await Promise.all(optionNames.map(async (optionName) => {
+      
+      try {
+        if (optionName === "gameBlacklist" || optionName === "userBlacklist") {
+          options[optionName] = JSON.parse(await GM.getValue(optionName, JSON.stringify(options[optionName])));
+        } else {
+          options[optionName] = await GM.getValue(optionName, options[optionName]);
+        }
+      } catch (err) {
+        error("Something went wrong:", err);
+      }
+
+      // https://github.com/greasemonkey/greasemonkey/issues/1860#issuecomment-32908169
+      GM_registerMenuCommand("Set variable " + optionName, () => {
+        try {
+          var input = JSON.parse(prompt("Value for " + optionName, JSON.stringify(options[optionName])));
+
+          if (input == null) {
+            return;
+          }
+
+          if (Array.isArray(input)) {
+            input = JSON.stringify(input);
+          }
+
+          GM.setValue(optionName, input);
+          options[optionName] = input;
+          info("Changed %s to %s", optionName, options[optionName]);
+        } catch (err) {
+          error("Something went wrong:", err);
+        }
+      });
+    }));
   }
 
   start();
