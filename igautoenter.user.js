@@ -80,10 +80,10 @@
       return;
     }
     try {
+      await withFailSafeAsync(getOptionsFromCache)();
       const [userData, ownedGames] = await Promise.all([
         withFailSafeAsync(getUserData)(),
-        withFailSafeAsync(getOwnedGames)(),
-        withFailSafeAsync(getOptionsFromCache)()
+        withFailSafeAsync(getOwnedGames)()
       ]);
       setUserData(userData);
       setOwnedGames(ownedGames);
