@@ -1,4 +1,7 @@
 ## Release Notes
+*2.6.1*
+* Acquiring user data (`my.coins` & `my.level`) should now work more reliably
+
 *2.6.0*
 * Options are now configurable over GreaseMonkey's menu
 * `my.level` defaults to `10` (instead of `0`) if unable to determine the actual value

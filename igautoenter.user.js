@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         IndieGala: Auto-enter Giveaways
-// @version      2.6.0
+// @version      2.6.1
 // @description  Automatically enters IndieGala Giveaways
 // @author       Hafas (https://github.com/Hafas/)
 // @match        https://www.indiegala.com/giveaways*
@@ -129,27 +129,33 @@
     const response = await request("/get_user_info?show_coins=True", { 
       maxRetries: 0
     });
-    return response.json();
+    /**
+     * the API occasionally returns in the `html` property something like:
+     * [...]`$('#ajax_get_user_data').toggle('fast');\n\t});\n</script><script async type="text/javascript" src="/_Incapsula_Resource?`[...]
+     * with unescaped quotation marks which results to a parsing error when trying to parse it as a JSON
+     * The workaround is to just return the payload as text and extract the desired information with regular expressions
+     */
+    return response.text();
   }
 
+  const LEVEL_PATTERN = /"giveaways_user_lever": ([0-9]+)/;
+  const COINS_PATTERN = /"silver_coins_tot": ([0-9]+)/;
   /**
    * collects user information including level, coins and next recharge
    */
-  function setUserData (json) {
-    if (!json) {
-      error("No user data found!");
-      return;
-    }
-    const { giveaways_user_lever: level, silver_coins_tot: coins } = json;
-    if (isNaN(level)) {
+  function setUserData (text) {
+    let match = LEVEL_PATTERN.exec(text);
+    if (!match) {
       error("unable to determine level");
     } else {
-      my.level = level;
+      my.level = parseInt(match[1]);
     }
-    if (isNaN(coins)) {
+
+    match = COINS_PATTERN.exec(text);
+    if (!match) {
       error("unable to determine #coins");
     } else {
-      my.coins = coins;
+      my.coins = parseInt(match[1]);
     }
   }
 
