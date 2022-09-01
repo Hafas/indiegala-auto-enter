@@ -346,6 +346,7 @@
         by: getGiveawayBy(giveawayDOM),
         boughtTickets: getGiveawayBoughtTickets(giveawayDOM),
         extraOdds: getGiveawayExtraOdds(giveawayDOM),
+        token: getGiveawayToken(giveawayDOM),
         steamId: steamId,
         idType: idType,
         gameId: gameId,
@@ -405,6 +406,13 @@
     return parseInt(extraOddsElement.textContent);
   });
   const getGiveawayExtraOdds = withFailSafe((giveawayDOM) => giveawayDOM.getElementsByClassName("fa-clone").length !== 0);
+  const getGiveawayToken = withFailSafe((giveawayDOM) => {
+    const clickElements = giveawayDOM.getElementsByClassName("items-list-item-ticket-click")
+    if (clickElements.length === 0) {
+      return null;
+    }
+    return clickElements[0].getAttribute('onclick').split(',').pop().slice(2, -2);
+  });
 
   /**
    * utility function that checks if a name is in a blacklist
@@ -518,7 +526,7 @@
       info("Entering giveaway", this);
       const response = await request("/giveaways/join", {
         method: "POST",
-        body: JSON.stringify({ id: this.id }),
+        body: JSON.stringify({ id: this.id, token: this.token }),
         headers: {
           "X-Requested-With": "XMLHttpRequest"
         }
